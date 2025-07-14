@@ -1,0 +1,29 @@
+# تجاهل مجلد node_modules
+node_modules/
+
+# تجاهل مجلد الملفات المرفوعة
+uploads/
+
+# تجاهل ملفات النظام
+.DS_Store
+Thumbs.db
+
+
+
+# تجاهل ملفات السجلات
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# تجاهل ملفات المحرر
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# تجاهل ملفات البناء
+/dist
+/build
+
+# تجاهل ملفات التغطية
+/coverage
