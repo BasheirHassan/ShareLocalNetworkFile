@@ -450,7 +450,8 @@ cleanupBtn.addEventListener('click', async () => {
 });
 
 // مستمع حدث زر التصفح
-browseBtn.addEventListener('click', () => {
+browseBtn.addEventListener('click', (e) => {
+  e.stopPropagation(); // منع انتشار الحدث لمنطقة السحب والإفلات
   fileInput.click();
 });
 

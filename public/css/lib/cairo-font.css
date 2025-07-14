@@ -1,0 +1,36 @@
+/* خط Cairo - محلي */
+/* cairo-300 - arabic */
+@font-face {
+  font-display: swap;
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 300;
+  src: url('./fonts/cairo-300.ttf') format('truetype');
+}
+
+/* cairo-regular - arabic */
+@font-face {
+  font-display: swap;
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 400;
+  src: url('./fonts/cairo-400.ttf') format('truetype');
+}
+
+/* cairo-600 - arabic */
+@font-face {
+  font-display: swap;
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 600;
+  src: url('./fonts/cairo-600.ttf') format('truetype');
+}
+
+/* cairo-700 - arabic */
+@font-face {
+  font-display: swap;
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 700;
+  src: url('./fonts/cairo-700.ttf') format('truetype');
+}
