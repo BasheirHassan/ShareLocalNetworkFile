@@ -133,6 +133,129 @@ body {
   background-color: #f8f9fa !important;
 }
 
+/* أنماط قسم المستخدمين المتصلين */
+.connected-users-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.user-item {
+  transition: all 0.3s ease;
+  border: none !important;
+  position: relative;
+}
+
+.user-item:hover {
+  background-color: #f8f9fa !important;
+  transform: translateX(-2px);
+}
+
+.user-item.current-user {
+  background-color: rgba(255, 193, 7, 0.1) !important;
+  border-right: 3px solid #ffc107 !important;
+}
+
+.user-item.current-user:hover {
+  background-color: rgba(255, 193, 7, 0.15) !important;
+}
+
+.user-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #28a745;
+  display: inline-block;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+  }
+}
+
+.user-duration {
+  font-size: 0.75rem;
+  color: #6c757d;
+  direction: ltr;
+  text-align: left;
+}
+
+.user-device-info {
+  font-size: 0.7rem;
+  color: #6c757d;
+}
+
+.user-device-info i {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.user-device-info > div {
+  background-color: rgba(108, 117, 125, 0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.send-file-btn {
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.user-item:hover .send-file-btn {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.send-file-btn:hover {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+  color: white !important;
+  transform: scale(1.1) !important;
+}
+
+/* أنماط نموذج إرسال الملف */
+#send-file-modal .modal-content {
+  border: none;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+}
+
+#send-file-modal .modal-header {
+  background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+  color: white;
+  border-bottom: none;
+}
+
+#send-file-modal .modal-header .btn-close {
+  filter: invert(1);
+}
+
+#selected-file-preview {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#send-progress {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; height: 0; }
+  to { opacity: 1; height: 20px; }
+}
+
 /* تحسين مظهر الإحصائيات على الشاشات الصغيرة */
 @media (max-width: 768px) {
   .files-header-stats {
@@ -158,5 +281,30 @@ body {
   .tooltip-inner {
     max-width: 250px;
     font-size: 0.85rem;
+  }
+
+  /* تحسين قسم المستخدمين على الشاشات الصغيرة */
+  .connected-users-list {
+    max-height: 300px;
+  }
+
+  .user-duration {
+    font-size: 0.7rem;
+  }
+
+  .user-device-info {
+    font-size: 0.65rem;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.25rem !important;
+  }
+
+  .user-device-info > div {
+    padding: 0.15rem 0.3rem;
+  }
+
+  .send-file-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
   }
 }

@@ -56,7 +56,7 @@
     <!-- القسم الرئيسي -->
     <div class="row g-4">
       <!-- قسم رفع الملفات -->
-      <div class="col-12">
+      <div class="col-lg-8 col-12">
         <div class="card shadow-sm h-100">
           <div class="card-header bg-primary text-white">
             <div class="d-flex align-items-center justify-content-between">
@@ -114,6 +114,42 @@
                 <span>رفع الملفات</span>
               </button>
             </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- قسم المستخدمين المتصلين -->
+      <div class="col-lg-4 col-12">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-success text-white">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-people-fill me-2 fs-5"></i>
+                <h5 class="mb-0 fw-semibold">المستخدمون المتصلون</h5>
+              </div>
+              <div class="d-flex align-items-center">
+                <span class="badge bg-light text-dark" id="connected-users-badge">0</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <!-- قائمة المستخدمين -->
+            <div id="connected-users-list" class="list-group list-group-flush">
+              <!-- سيتم ملء هذا القسم بواسطة JavaScript -->
+              <div class="list-group-item text-center py-4">
+                <div class="spinner-border text-success" role="status">
+                  <span class="visually-hidden">جاري التحميل...</span>
+                </div>
+                <p class="mt-2 text-muted mb-0">جاري تحميل قائمة المستخدمين...</p>
+              </div>
+            </div>
+
+            <!-- رسالة عدم وجود مستخدمين -->
+            <div id="no-users-message" class="text-center py-4 d-none">
+              <i class="bi bi-person-x text-muted fs-3"></i>
+              <h6 class="mt-2 text-muted">لا يوجد مستخدمون متصلون</h6>
+              <p class="text-muted small mb-0">انتظر انضمام مستخدمين آخرين</p>
+            </div>
           </div>
         </div>
       </div>
@@ -218,6 +254,57 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg me-1"></i>إغلاق</button>
           <a href="#" class="btn btn-primary" id="download-btn" download><i class="bi bi-download me-2"></i>تنزيل الملف</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- نموذج إرسال ملف لمستخدم -->
+  <div class="modal fade" id="send-file-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-semibold">
+            <i class="bi bi-send-fill me-2 text-primary"></i>
+            إرسال ملف إلى: <span id="send-to-user-name" class="text-success"></span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+        </div>
+        <div class="modal-body">
+          <form id="send-file-form">
+            <div class="mb-3">
+              <label for="file-to-send" class="form-label">اختر الملف للإرسال:</label>
+              <input type="file" class="form-control" id="file-to-send" required>
+              <div class="form-text">يمكنك اختيار أي نوع من الملفات</div>
+            </div>
+
+            <!-- معاينة الملف المختار -->
+            <div id="selected-file-preview" class="d-none">
+              <div class="alert alert-info d-flex align-items-center">
+                <i id="selected-file-icon" class="bi me-2 fs-4"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-semibold" id="selected-file-name"></div>
+                  <small class="text-muted" id="selected-file-size"></small>
+                </div>
+              </div>
+            </div>
+
+            <!-- شريط التقدم لإرسال الملف -->
+            <div class="progress mb-3 d-none" id="send-progress" style="height: 20px;">
+              <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                   role="progressbar" style="width: 0%">
+                <span class="progress-text small fw-semibold">0%</span>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-lg me-1"></i>إلغاء
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-send-btn">
+            <i class="bi bi-send me-1"></i>إرسال الملف
+          </button>
         </div>
       </div>
     </div>

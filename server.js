@@ -274,6 +274,79 @@ app.delete('/files/:id', (req, res) => {
   });
 });
 
+// مسار لإرسال ملف لمستخدم محدد
+app.post('/send-file', (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ status: false, message: 'لم يتم اختيار ملف' });
+    }
+
+    const targetUser = req.body.targetUser;
+    if (!targetUser) {
+      return res.status(400).json({ status: false, message: 'لم يتم تحديد المستخدم المستهدف' });
+    }
+
+    // البحث عن المستخدم المستهدف
+    const targetUserInfo = Array.from(connectedUsersList.values()).find(user => user.name === targetUser);
+    if (!targetUserInfo) {
+      return res.status(404).json({ status: false, message: 'المستخدم المستهدف غير متصل' });
+    }
+
+    const file = req.files.file;
+    const fileName = Buffer.from(file.name, 'latin1').toString('utf8');
+    const fileExtension = path.extname(fileName);
+    const timestamp = Date.now();
+    const uniqueFileName = `${timestamp}_${fileName}`;
+    const filePath = path.join(uploadsDir, uniqueFileName);
+
+    // نقل الملف إلى مجلد التحميلات
+    file.mv(filePath, (err) => {
+      if (err) {
+        return res.status(500).json({ status: false, message: err.message });
+      }
+
+      // إضافة الملف إلى قائمة الملفات المشتركة
+      const fileInfo = {
+        id: timestamp.toString(),
+        name: fileName,
+        path: `/uploads/${uniqueFileName}`,
+        size: file.size,
+        type: file.mimetype,
+        uploadTime: new Date().toISOString(),
+        sentTo: targetUser
+      };
+
+      sharedFiles.push(fileInfo);
+
+      // إرسال الملف للمستخدم المستهدف
+      const targetSocket = io.sockets.sockets.get(targetUserInfo.id);
+      if (targetSocket) {
+        targetSocket.emit('file-received', {
+          fileName: fileName,
+          senderName: req.body.senderName || 'مستخدم مجهول',
+          fileUrl: fileInfo.path,
+          fileInfo: fileInfo
+        });
+
+        // إرسال تأكيد للمرسل
+        res.status(200).json({
+          status: true,
+          message: `تم إرسال الملف "${fileName}" إلى ${targetUser} بنجاح`,
+          file: fileInfo
+        });
+
+        // إشعار جميع المستخدمين بالملف الجديد
+        io.emit('new-file', fileInfo);
+      } else {
+        // المستخدم المستهدف غير متصل
+        res.status(404).json({ status: false, message: 'المستخدم المستهدف غير متصل حالياً' });
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ status: false, message: err.message });
+  }
+});
+
 // مسار لحذف الملفات القديمة يدوياً
 app.post('/cleanup-old-files', (req, res) => {
   try {
@@ -331,19 +404,107 @@ function getConnectedUsersDetails() {
   return Array.from(connectedUsersList.values()).map(user => ({
     name: user.name,
     joinTime: user.joinTime,
-    duration: Math.floor((new Date() - new Date(user.joinTime)) / 1000) // بالثواني
+    duration: Math.floor((new Date() - new Date(user.joinTime)) / 1000), // بالثواني
+    deviceType: user.deviceType || 'غير معروف',
+    deviceName: user.deviceName || 'جهاز غير معروف',
+    browser: user.browser || 'متصفح غير معروف',
+    os: user.os || 'نظام تشغيل غير معروف',
+    ip: user.ip
   }));
+}
+
+// دالة لتحليل User Agent واستخراج معلومات الجهاز
+function parseUserAgent(userAgent) {
+  if (!userAgent) {
+    return {
+      deviceType: 'غير معروف',
+      deviceName: 'جهاز غير معروف',
+      browser: 'متصفح غير معروف',
+      os: 'نظام تشغيل غير معروف'
+    };
+  }
+
+  let deviceType = 'كمبيوتر';
+  let deviceName = 'جهاز كمبيوتر';
+  let browser = 'متصفح غير معروف';
+  let os = 'نظام تشغيل غير معروف';
+
+  // تحديد نوع الجهاز
+  if (/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)) {
+    if (/iPad/i.test(userAgent)) {
+      deviceType = 'تابلت';
+      deviceName = 'iPad';
+    } else if (/iPhone/i.test(userAgent)) {
+      deviceType = 'هاتف ذكي';
+      deviceName = 'iPhone';
+    } else if (/Android/i.test(userAgent)) {
+      if (/Mobile/i.test(userAgent)) {
+        deviceType = 'هاتف ذكي';
+        deviceName = 'هاتف أندرويد';
+      } else {
+        deviceType = 'تابلت';
+        deviceName = 'تابلت أندرويد';
+      }
+    } else {
+      deviceType = 'هاتف ذكي';
+      deviceName = 'هاتف ذكي';
+    }
+  }
+
+  // تحديد المتصفح
+  if (/Chrome/i.test(userAgent) && !/Edge/i.test(userAgent)) {
+    browser = 'Chrome';
+  } else if (/Firefox/i.test(userAgent)) {
+    browser = 'Firefox';
+  } else if (/Safari/i.test(userAgent) && !/Chrome/i.test(userAgent)) {
+    browser = 'Safari';
+  } else if (/Edge/i.test(userAgent)) {
+    browser = 'Edge';
+  } else if (/Opera/i.test(userAgent)) {
+    browser = 'Opera';
+  }
+
+  // تحديد نظام التشغيل
+  if (/Windows NT 10/i.test(userAgent)) {
+    os = 'Windows 10/11';
+  } else if (/Windows NT 6.3/i.test(userAgent)) {
+    os = 'Windows 8.1';
+  } else if (/Windows NT 6.1/i.test(userAgent)) {
+    os = 'Windows 7';
+  } else if (/Windows/i.test(userAgent)) {
+    os = 'Windows';
+  } else if (/Mac OS X/i.test(userAgent)) {
+    os = 'macOS';
+  } else if (/Linux/i.test(userAgent)) {
+    os = 'Linux';
+  } else if (/Android/i.test(userAgent)) {
+    const androidMatch = userAgent.match(/Android (\d+\.?\d*)/);
+    os = androidMatch ? `Android ${androidMatch[1]}` : 'Android';
+  } else if (/iOS/i.test(userAgent) || /iPhone OS/i.test(userAgent)) {
+    const iosMatch = userAgent.match(/OS (\d+_?\d*)/);
+    os = iosMatch ? `iOS ${iosMatch[1].replace('_', '.')}` : 'iOS';
+  }
+
+  return { deviceType, deviceName, browser, os };
 }
 
 // إعداد Socket.IO للاتصال المباشر
 io.on('connection', (socket) => {
   // إنشاء معلومات المستخدم الجديد
   const userName = generateUserName();
+  const userAgent = socket.handshake.headers['user-agent'];
+  const deviceInfo = parseUserAgent(userAgent);
+
   const userInfo = {
     id: socket.id,
     name: userName,
     joinTime: new Date().toISOString(),
-    ip: socket.handshake.address
+    ip: socket.handshake.address,
+    userAgent: userAgent,
+    deviceType: deviceInfo.deviceType,
+    deviceName: deviceInfo.deviceName,
+    browser: deviceInfo.browser,
+    os: deviceInfo.os
   };
 
   // إضافة المستخدم إلى القائمة
@@ -371,6 +532,56 @@ io.on('connection', (socket) => {
   if (connectedUsers > 1) {
     socket.broadcast.emit('user-joined', { name: userName });
   }
+
+  // معالجة إرسال ملف من العميل
+  socket.on('send-file-to-user', (data) => {
+    const { targetUserName, fileData, fileName, fileSize, fileType } = data;
+    const senderInfo = connectedUsersList.get(socket.id);
+
+    if (!senderInfo) {
+      socket.emit('file-sent-error', {
+        fileName,
+        recipientName: targetUserName,
+        error: 'معلومات المرسل غير متوفرة'
+      });
+      return;
+    }
+
+    // البحث عن المستخدم المستهدف
+    const targetUserInfo = Array.from(connectedUsersList.values()).find(user => user.name === targetUserName);
+    if (!targetUserInfo) {
+      socket.emit('file-sent-error', {
+        fileName,
+        recipientName: targetUserName,
+        error: 'المستخدم غير متصل'
+      });
+      return;
+    }
+
+    // إرسال الملف للمستخدم المستهدف
+    const targetSocket = io.sockets.sockets.get(targetUserInfo.id);
+    if (targetSocket) {
+      targetSocket.emit('file-received', {
+        fileName,
+        senderName: senderInfo.name,
+        fileData,
+        fileSize,
+        fileType
+      });
+
+      // تأكيد الإرسال للمرسل
+      socket.emit('file-sent-success', {
+        fileName,
+        recipientName: targetUserName
+      });
+    } else {
+      socket.emit('file-sent-error', {
+        fileName,
+        recipientName: targetUserName,
+        error: 'فشل في الاتصال بالمستخدم'
+      });
+    }
+  });
 
   socket.on('disconnect', () => {
     // إزالة المستخدم من القائمة

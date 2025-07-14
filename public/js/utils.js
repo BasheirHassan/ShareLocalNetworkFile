@@ -200,10 +200,10 @@ function escapeHtml(text) {
  * عرض إشعار للمستخدم
  * @param {string} message - نص الإشعار
  * @param {string} type - نوع الإشعار (success, danger, warning, info)
- * @param {object} toastElement - عنصر الإشعار (اختياري)
+ * @param {object} options - خيارات إضافية (action, duration)
  */
-function showNotification(message, type = 'success', toastElement = null) {
-  const toast = toastElement || document.getElementById('notification-toast');
+function showNotification(message, type = 'success', options = {}) {
+  const toast = document.getElementById('notification-toast');
   const toastIcon = document.getElementById('toast-icon');
   const toastTitle = document.getElementById('toast-title');
   const messageElement = document.getElementById('notification-message');
@@ -248,11 +248,31 @@ function showNotification(message, type = 'success', toastElement = null) {
     toastTitle.textContent = title;
   }
   if (messageElement) {
-    messageElement.textContent = message;
+    // إضافة زر إجراء إذا كان متوفراً
+    if (options.action) {
+      messageElement.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+          <span>${escapeHtml(message)}</span>
+          <button class="btn btn-sm btn-outline-light ms-2" id="toast-action-btn">
+            ${escapeHtml(options.action.text)}
+          </button>
+        </div>
+      `;
+
+      // إضافة مستمع الحدث للزر
+      const actionBtn = document.getElementById('toast-action-btn');
+      if (actionBtn && options.action.callback) {
+        actionBtn.addEventListener('click', options.action.callback);
+      }
+    } else {
+      messageElement.textContent = message;
+    }
   }
 
   // إظهار الإشعار
-  const bsToast = new bootstrap.Toast(toast);
+  const bsToast = new bootstrap.Toast(toast, {
+    delay: options.duration || 5000
+  });
   bsToast.show();
 }
 

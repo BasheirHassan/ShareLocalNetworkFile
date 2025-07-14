@@ -42,10 +42,28 @@ const connectedUsersTooltip = document.getElementById('connected-users-tooltip')
 // تم حذف العناصر القديمة
 const browseBtn = document.getElementById('browse-btn');
 
+// عناصر قسم المستخدمين المتصلين
+const connectedUsersList = document.getElementById('connected-users-list');
+const connectedUsersBadge = document.getElementById('connected-users-badge');
+const noUsersMessage = document.getElementById('no-users-message');
+
+// عناصر نموذج إرسال الملف
+const sendFileModal = new bootstrap.Modal(document.getElementById('send-file-modal'));
+const sendFileForm = document.getElementById('send-file-form');
+const fileToSend = document.getElementById('file-to-send');
+const sendToUserName = document.getElementById('send-to-user-name');
+const selectedFilePreview = document.getElementById('selected-file-preview');
+const selectedFileName = document.getElementById('selected-file-name');
+const selectedFileSize = document.getElementById('selected-file-size');
+const selectedFileIcon = document.getElementById('selected-file-icon');
+const sendProgress = document.getElementById('send-progress');
+const confirmSendBtn = document.getElementById('confirm-send-btn');
+
 // متغيرات لتتبع معلومات المستخدمين
 let currentUserInfo = null;
 let connectedUserNames = [];
 let connectedUsersDetails = [];
+let selectedTargetUser = null;
 
 // دالة لتنسيق مدة الاتصال
 function formatConnectionDuration(seconds) {
@@ -60,6 +78,116 @@ function formatConnectionDuration(seconds) {
     return hours > 0 ? `${hours} ساعة${minutes > 0 ? ` و ${minutes} دقيقة` : ''}` : `${minutes} دقيقة`;
   }
 }
+
+// دالة لتحديث قائمة المستخدمين المتصلين
+function updateConnectedUsersList(usersDetails = []) {
+  if (!connectedUsersList) return;
+
+  // تحديث عدد المستخدمين في البطاقة
+  if (connectedUsersBadge) {
+    connectedUsersBadge.textContent = usersDetails.length;
+  }
+
+  // إذا لم يكن هناك مستخدمون متصلون
+  if (usersDetails.length === 0) {
+    connectedUsersList.innerHTML = '';
+    if (noUsersMessage) {
+      noUsersMessage.classList.remove('d-none');
+    }
+    return;
+  }
+
+  // إخفاء رسالة عدم وجود مستخدمين
+  if (noUsersMessage) {
+    noUsersMessage.classList.add('d-none');
+  }
+
+  // إنشاء قائمة المستخدمين
+  let html = '';
+  usersDetails.forEach((user, index) => {
+    const duration = formatConnectionDuration(user.duration);
+    const isCurrentUser = currentUserInfo && user.name === currentUserInfo.name;
+    const userIcon = isCurrentUser ? 'bi-person-fill-check text-warning' : 'bi-person-circle text-primary';
+    const userClass = isCurrentUser ? 'user-item current-user' : 'user-item';
+    const userBadge = isCurrentUser ? '<span class="badge bg-warning text-dark ms-2">أنت</span>' : '';
+
+    // تحديد أيقونة نوع الجهاز
+    let deviceIcon = 'bi-laptop';
+    if (user.deviceType === 'هاتف ذكي') {
+      deviceIcon = 'bi-phone';
+    } else if (user.deviceType === 'تابلت') {
+      deviceIcon = 'bi-tablet';
+    }
+
+    // إخفاء زر الإرسال للمستخدم الحالي
+    const sendButton = isCurrentUser ? '' : `
+      <button class="btn btn-outline-primary btn-sm send-file-btn"
+              onclick="openSendFileModal('${user.name}')"
+              title="إرسال ملف">
+        <i class="bi bi-send"></i>
+      </button>
+    `;
+
+    html += `
+      <div class="list-group-item ${userClass} d-flex align-items-center justify-content-between p-3">
+        <div class="d-flex align-items-center flex-grow-1">
+          <i class="bi ${userIcon} me-3 fs-5"></i>
+          <div class="flex-grow-1">
+            <div class="d-flex align-items-center">
+              <span class="fw-semibold">${escapeHtml(user.name)}</span>
+              ${userBadge}
+              <span class="user-status-indicator ms-2"></span>
+            </div>
+            <div class="user-duration">متصل منذ ${duration}</div>
+            <div class="user-device-info d-flex align-items-center gap-2 mt-1">
+              <div class="d-flex align-items-center text-muted small">
+                <i class="bi ${deviceIcon} me-1"></i>
+                <span>${escapeHtml(user.deviceName || 'جهاز غير معروف')}</span>
+              </div>
+              <div class="d-flex align-items-center text-muted small">
+                <i class="bi bi-globe me-1"></i>
+                <span>${escapeHtml(user.browser || 'متصفح غير معروف')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          ${sendButton}
+        </div>
+      </div>
+    `;
+  });
+
+  connectedUsersList.innerHTML = html;
+}
+
+// دالة لفتح نموذج إرسال الملف
+function openSendFileModal(targetUserName) {
+  selectedTargetUser = targetUserName;
+  if (sendToUserName) {
+    sendToUserName.textContent = targetUserName;
+  }
+
+  // إعادة تعيين النموذج
+  if (sendFileForm) {
+    sendFileForm.reset();
+  }
+  if (selectedFilePreview) {
+    selectedFilePreview.classList.add('d-none');
+  }
+  if (sendProgress) {
+    sendProgress.classList.add('d-none');
+  }
+  if (confirmSendBtn) {
+    confirmSendBtn.disabled = false;
+    confirmSendBtn.innerHTML = '<i class="bi bi-send me-1"></i>إرسال الملف';
+  }
+
+  sendFileModal.show();
+}
+
+// جعل دالة openSendFileModal متاحة عالمياً
+window.openSendFileModal = openSendFileModal;
 
 // دالة لتحديث tooltip عدد المتصلين
 function updateConnectedUsersTooltip(count, usersDetails = []) {
@@ -89,6 +217,14 @@ function updateConnectedUsersTooltip(count, usersDetails = []) {
       const userLabel = isCurrentUser ? ' (أنت)' : '';
       const userBadge = isCurrentUser ? '<span class="badge bg-warning text-dark ms-1">أنت</span>' : '';
 
+      // تحديد أيقونة نوع الجهاز
+      let deviceIcon = 'bi-laptop';
+      if (user.deviceType === 'هاتف ذكي') {
+        deviceIcon = 'bi-phone';
+      } else if (user.deviceType === 'تابلت') {
+        deviceIcon = 'bi-tablet';
+      }
+
       tooltipContent += `
         <hr class="my-2">
         <div class="p-2 bg-light rounded">
@@ -97,8 +233,13 @@ function updateConnectedUsersTooltip(count, usersDetails = []) {
             <span class="fw-semibold">${user.name}</span>
             ${userBadge}
           </div>
-          <div class="text-muted small">
+          <div class="text-muted small mb-1">
             <i class="bi bi-clock me-1"></i>متصل منذ ${duration}
+          </div>
+          <div class="text-muted small">
+            <i class="bi ${deviceIcon} me-1"></i>${user.deviceName || 'جهاز غير معروف'}
+            <span class="mx-1">•</span>
+            <i class="bi bi-globe me-1"></i>${user.browser || 'متصفح غير معروف'}
           </div>
         </div>
       `;
@@ -119,6 +260,14 @@ function updateConnectedUsersTooltip(count, usersDetails = []) {
         const userBadge = isCurrentUser ? '<span class="badge bg-warning text-dark ms-1">أنت</span>' : '';
         const bgClass = isCurrentUser ? 'bg-warning bg-opacity-10' : 'bg-light';
 
+        // تحديد أيقونة نوع الجهاز
+        let deviceIcon = 'bi-laptop';
+        if (user.deviceType === 'هاتف ذكي') {
+          deviceIcon = 'bi-phone';
+        } else if (user.deviceType === 'تابلت') {
+          deviceIcon = 'bi-tablet';
+        }
+
         tooltipContent += `
           <div class="p-2 mb-2 ${bgClass} rounded border">
             <div class="d-flex align-items-center justify-content-between mb-1">
@@ -128,8 +277,13 @@ function updateConnectedUsersTooltip(count, usersDetails = []) {
                 ${userBadge}
               </div>
             </div>
-            <div class="text-muted small">
+            <div class="text-muted small mb-1">
               <i class="bi bi-clock me-1"></i>متصل منذ ${duration}
+            </div>
+            <div class="text-muted small">
+              <i class="bi ${deviceIcon} me-1"></i>${user.deviceName || 'جهاز غير معروف'}
+              <span class="mx-1">•</span>
+              <i class="bi bi-globe me-1"></i>${user.browser || 'متصفح غير معروف'}
             </div>
           </div>
         `;
@@ -219,6 +373,115 @@ document.addEventListener('click', function(event) {
 
 // جعل دالة toggleMiniQR متاحة عالمياً
 window.toggleMiniQR = toggleMiniQR;
+
+// معالجة تغيير الملف المختار للإرسال
+if (fileToSend) {
+  fileToSend.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file && selectedFilePreview) {
+      // عرض معاينة الملف
+      selectedFileName.textContent = file.name;
+      selectedFileSize.textContent = formatFileSize(file.size);
+      selectedFileIcon.className = `bi ${getFileIcon(file.type)} me-2 fs-4`;
+      selectedFilePreview.classList.remove('d-none');
+    } else if (selectedFilePreview) {
+      selectedFilePreview.classList.add('d-none');
+    }
+  });
+}
+
+// معالجة زر تأكيد الإرسال
+if (confirmSendBtn) {
+  confirmSendBtn.addEventListener('click', async function() {
+    const file = fileToSend.files[0];
+    if (!file) {
+      showNotification('يرجى اختيار ملف للإرسال', 'warning');
+      return;
+    }
+
+    if (!selectedTargetUser) {
+      showNotification('خطأ في تحديد المستخدم المستهدف', 'danger');
+      return;
+    }
+
+    await sendFileToUser(file, selectedTargetUser);
+  });
+}
+
+// دالة إرسال ملف لمستخدم محدد
+async function sendFileToUser(file, targetUserName) {
+  if (!file || !targetUserName) {
+    showNotification('معلومات الإرسال غير مكتملة', 'danger');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('targetUser', targetUserName);
+  formData.append('senderName', currentUserInfo?.name || 'مستخدم مجهول');
+
+  // تعطيل زر الإرسال وإظهار شريط التقدم
+  confirmSendBtn.disabled = true;
+  confirmSendBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>جاري الإرسال...';
+  sendProgress.classList.remove('d-none');
+  const progressBar = sendProgress.querySelector('.progress-bar');
+  const progressText = sendProgress.querySelector('.progress-text');
+  progressBar.style.width = '0%';
+  progressBar.setAttribute('aria-valuenow', 0);
+  if (progressText) {
+    progressText.textContent = '0%';
+  }
+
+  try {
+    const xhr = new XMLHttpRequest();
+
+    // تتبع تقدم الإرسال
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percentComplete = (e.loaded / e.total) * 100;
+        progressBar.style.width = percentComplete + '%';
+        progressBar.setAttribute('aria-valuenow', percentComplete);
+        if (progressText) {
+          progressText.textContent = Math.round(percentComplete) + '%';
+        }
+      }
+    });
+
+    await new Promise((resolve, reject) => {
+      xhr.addEventListener('load', function() {
+        if (xhr.status === 200) {
+          const response = JSON.parse(xhr.responseText);
+          showNotification(`تم إرسال الملف "${file.name}" إلى ${targetUserName} بنجاح`, 'success');
+          sendFileModal.hide();
+          resolve();
+        } else {
+          let errorMessage = `فشل في إرسال الملف "${file.name}"`;
+          try {
+            const response = JSON.parse(xhr.responseText);
+            errorMessage = response.message || errorMessage;
+          } catch (e) {}
+          showNotification(errorMessage, 'danger');
+          reject(new Error(errorMessage));
+        }
+      });
+
+      xhr.addEventListener('error', function() {
+        showNotification(`حدث خطأ في الاتصال أثناء إرسال "${file.name}"`, 'danger');
+        reject(new Error('خطأ في الاتصال'));
+      });
+
+      xhr.open('POST', '/send-file', true);
+      xhr.send(formData);
+    });
+  } catch (error) {
+    console.error('خطأ في إرسال الملف:', error);
+  } finally {
+    // إعادة تفعيل زر الإرسال وإخفاء شريط التقدم
+    confirmSendBtn.disabled = false;
+    confirmSendBtn.innerHTML = '<i class="bi bi-send me-1"></i>إرسال الملف';
+    sendProgress.classList.add('d-none');
+  }
+}
 
 // عرض معلومات الشبكة
 if (networkInfo) {
@@ -702,6 +965,9 @@ socket.on('connected-users-update', (data) => {
   // تحديث tooltip مع تفاصيل المستخدمين
   updateConnectedUsersTooltip(count, connectedUsersDetails);
 
+  // تحديث قائمة المستخدمين المتصلين
+  updateConnectedUsersList(connectedUsersDetails);
+
   console.log(`عدد المتصلين الحالي: ${count}، التفاصيل:`, connectedUsersDetails);
 });
 
@@ -713,6 +979,40 @@ socket.on('user-joined', (data) => {
 socket.on('user-left', (data) => {
   const userName = data?.name || 'أحد المستخدمين';
   showNotification(`غادر ${userName}`, 'warning');
+});
+
+// استقبال ملف مرسل من مستخدم آخر
+socket.on('file-received', (data) => {
+  const { fileName, senderName, fileUrl } = data;
+  showNotification(
+    `تم استلام ملف "${fileName}" من ${senderName}`,
+    'info',
+    {
+      action: {
+        text: 'تنزيل',
+        callback: () => {
+          const link = document.createElement('a');
+          link.href = fileUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
+    }
+  );
+});
+
+// إشعار بنجاح إرسال الملف
+socket.on('file-sent-success', (data) => {
+  const { fileName, recipientName } = data;
+  showNotification(`تم إرسال "${fileName}" إلى ${recipientName} بنجاح`, 'success');
+});
+
+// إشعار بفشل إرسال الملف
+socket.on('file-sent-error', (data) => {
+  const { fileName, recipientName, error } = data;
+  showNotification(`فشل في إرسال "${fileName}" إلى ${recipientName}: ${error}`, 'danger');
 });
 
 socket.on('disconnect', () => {
@@ -742,6 +1042,9 @@ setInterval(() => {
 
     // تحديث tooltip
     updateConnectedUsersTooltip(connectedUsersDetails.length, connectedUsersDetails);
+
+    // تحديث قائمة المستخدمين المتصلين
+    updateConnectedUsersList(connectedUsersDetails);
   }
 }, 30000); // كل 30 ثانية
 
