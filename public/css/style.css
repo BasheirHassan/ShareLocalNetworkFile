@@ -1,10 +1,11 @@
-/* يمكنك إضافة أنماط مخصصة هنا إذا لزم الأمر */
+/* استخدام ألوان Bootstrap الافتراضية */
 body {
   font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* أنماط رمز QR المصغر */
 #mini-qr-popup {
+  background-color: white;
   border: 1px solid #dee2e6;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
   animation: fadeInDown 0.3s ease-out;
@@ -33,21 +34,10 @@ body {
   }
 }
 
-/* تحسين مظهر زر QR */
-.btn-qr-mini {
-  transition: all 0.2s ease;
-}
-
-.btn-qr-mini:hover {
-  transform: scale(1.1);
-  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
-}
-
 /* أنماط الإحصائيات في header قسم الملفات المشتركة */
 .files-header-stats {
   font-size: 0.85rem;
   opacity: 0.8;
-  transition: opacity 0.2s ease;
 }
 
 .files-header-stats:hover {
@@ -72,5 +62,11 @@ body {
 
   .files-header-stats i {
     font-size: 0.8rem;
+  }
+
+  /* تحسين التخطيط على الشاشات الصغيرة */
+  .card-header .d-flex.gap-4 {
+    flex-direction: column;
+    gap: 1rem !important;
   }
 }
