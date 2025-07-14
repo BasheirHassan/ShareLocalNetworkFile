@@ -42,3 +42,35 @@ body {
   transform: scale(1.1);
   box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
 }
+
+/* أنماط الإحصائيات في header قسم الملفات المشتركة */
+.files-header-stats {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.files-header-stats:hover {
+  opacity: 1;
+}
+
+.files-header-stats i {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* تحسين مظهر الإحصائيات على الشاشات الصغيرة */
+@media (max-width: 768px) {
+  .files-header-stats {
+    font-size: 0.75rem;
+    gap: 0.5rem !important;
+  }
+
+  .files-header-stats > div {
+    gap: 0.25rem !important;
+  }
+
+  .files-header-stats i {
+    font-size: 0.8rem;
+  }
+}

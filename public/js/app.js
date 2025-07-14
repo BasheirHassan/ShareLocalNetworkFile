@@ -37,10 +37,13 @@ const downloadBtn = document.getElementById('download-btn');
 // تم حذف qrcodeContainer القديم
 const dropArea = document.getElementById('drop-area');
 const connectionStatus = document.getElementById('connection-status');
-const totalFiles = document.getElementById('total-files');
-const totalSize = document.getElementById('total-size');
-const totalDownloads = document.getElementById('total-downloads');
+// تم حذف العناصر القديمة
 const browseBtn = document.getElementById('browse-btn');
+
+// عناصر الإحصائيات في header قسم الملفات المشتركة
+const headerTotalFiles = document.getElementById('header-total-files');
+const headerTotalSize = document.getElementById('header-total-size');
+const headerTotalDownloads = document.getElementById('header-total-downloads');
 
 // تخزين الملفات الحالية
 let currentFiles = [];
@@ -286,11 +289,14 @@ function updateFileStats() {
   const totalSizeBytes = currentFiles.reduce((sum, file) => sum + (file.size || 0), 0);
   const totalSizeFormatted = formatFileSize(totalSizeBytes);
 
-  // تحديث العناصر في الواجهة
-  if (totalFiles) totalFiles.textContent = fileCount;
-  if (totalSize) totalSize.textContent = totalSizeFormatted;
+  // تحديث الإحصائيات في header قسم الملفات المشتركة
+  if (headerTotalFiles) headerTotalFiles.textContent = fileCount;
+  if (headerTotalSize) headerTotalSize.textContent = totalSizeFormatted;
 
-  // يمكن إضافة إحصائيات أخرى هنا مثل عدد التنزيلات
+  // تحديث عدد التنزيلات (يمكن تطويره لاحقاً لحفظ العدد الفعلي)
+  if (headerTotalDownloads) headerTotalDownloads.textContent = '0';
+
+  // يمكن إضافة إحصائيات أخرى هنا
 }
 
 // عرض قائمة الملفات
