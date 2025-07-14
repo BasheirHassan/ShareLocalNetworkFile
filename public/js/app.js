@@ -312,8 +312,15 @@ const headerTotalFiles = document.getElementById('header-total-files');
 const headerTotalSize = document.getElementById('header-total-size');
 const headerTotalDownloads = document.getElementById('header-total-downloads');
 
+// عناصر DOM للملفات الخاصة
+const privateFilesList = document.getElementById('private-files-list');
+const noPrivateFilesMessage = document.getElementById('no-private-files-message');
+const headerTotalPrivateFiles = document.getElementById('header-total-private-files');
+const headerTotalPrivateSize = document.getElementById('header-total-private-size');
+
 // تخزين الملفات الحالية
-let currentFiles = [];
+let currentFiles = []; // الملفات العامة
+let currentPrivateFiles = []; // الملفات الخاصة
 
 // دالة لتنظيف اسم الملف وضمان الترميز الصحيح
 function sanitizeFileName(fileName) {
@@ -419,6 +426,7 @@ async function sendFileToUser(file, targetUserName) {
   formData.append('file', file);
   formData.append('targetUser', targetUserName);
   formData.append('senderName', currentUserInfo?.name || 'مستخدم مجهول');
+  formData.append('senderSocketId', currentUserInfo?.id || '');
 
   // تعطيل زر الإرسال وإظهار شريط التقدم
   confirmSendBtn.disabled = true;
@@ -502,6 +510,10 @@ async function uploadFile(file) {
 
   const formData = new FormData();
   formData.append('file', file);
+  // إضافة معرف المستخدم الذي رفع الملف
+  if (currentUserInfo && currentUserInfo.id) {
+    formData.append('uploaderSocketId', currentUserInfo.id);
+  }
 
   // تعطيل زر الرفع وإظهار شريط التقدم
   uploadBtn.disabled = true;
@@ -641,7 +653,7 @@ async function cleanupOldFiles() {
   }
 }
 
-// تحديث قائمة الملفات
+// تحديث قائمة الملفات العامة
 function updateFilesList() {
   fetch('/files')
     .then(response => response.json())
@@ -659,7 +671,30 @@ function updateFilesList() {
     });
 }
 
-// تحديث إحصائيات الملفات
+// تحديث قائمة الملفات الخاصة
+function updatePrivateFilesList() {
+  if (!currentUserInfo || !currentUserInfo.id) {
+    console.log('معلومات المستخدم غير متوفرة لجلب الملفات الخاصة');
+    return;
+  }
+
+  fetch(`/files/private/${currentUserInfo.id}`)
+    .then(response => response.json())
+    .then(files => {
+      // تنظيف أسماء الملفات
+      currentPrivateFiles = files.map(file => ({
+        ...file,
+        name: sanitizeFileName(file.name)
+      }));
+      renderPrivateFilesList();
+    })
+    .catch(error => {
+      console.error('خطأ في جلب قائمة الملفات الخاصة:', error);
+      showNotification('تعذر تحديث قائمة الملفات الخاصة', 'danger');
+    });
+}
+
+// تحديث إحصائيات الملفات العامة
 function updateFileStats() {
   const fileCount = currentFiles.length;
   const totalSizeBytes = currentFiles.reduce((sum, file) => sum + (file.size || 0), 0);
@@ -675,7 +710,18 @@ function updateFileStats() {
   // يمكن إضافة إحصائيات أخرى هنا
 }
 
-// عرض قائمة الملفات
+// تحديث إحصائيات الملفات الخاصة
+function updatePrivateFileStats() {
+  const fileCount = currentPrivateFiles.length;
+  const totalSizeBytes = currentPrivateFiles.reduce((sum, file) => sum + (file.size || 0), 0);
+  const totalSizeFormatted = formatFileSize(totalSizeBytes);
+
+  // تحديث الإحصائيات في header قسم الملفات الخاصة
+  if (headerTotalPrivateFiles) headerTotalPrivateFiles.textContent = fileCount;
+  if (headerTotalPrivateSize) headerTotalPrivateSize.textContent = totalSizeFormatted;
+}
+
+// عرض قائمة الملفات العامة
 function renderFilesList() {
   if (currentFiles.length === 0) {
     filesList.innerHTML = '';
@@ -685,10 +731,10 @@ function renderFilesList() {
   }
 
   noFilesMessage.classList.add('d-none');
-  
+
   // فرز الملفات بحسب تاريخ الرفع (الأحدث أولاً)
   currentFiles.sort((a, b) => new Date(b.uploadTime) - new Date(a.uploadTime));
-  
+
   let html = '';
   currentFiles.forEach(file => {
     const fileSize = formatFileSize(file.size);
@@ -703,6 +749,7 @@ function renderFilesList() {
           <div class="d-flex align-items-center">
             <i class="bi ${fileIcon} file-icon"></i>
             <span class="file-name">${escapeHtml(cleanFileName)}</span>
+            <span class="badge bg-primary ms-2 small">عام</span>
           </div>
         </td>
         <td>${getFileType(file.type)}</td>
@@ -740,6 +787,187 @@ function renderFilesList() {
 
   // تحديث الإحصائيات
   updateFileStats();
+}
+
+// عرض قائمة الملفات الخاصة
+function renderPrivateFilesList() {
+  if (!privateFilesList) return;
+
+  if (currentPrivateFiles.length === 0) {
+    privateFilesList.innerHTML = '';
+    if (noPrivateFilesMessage) {
+      noPrivateFilesMessage.classList.remove('d-none');
+    }
+    updatePrivateFileStats();
+    return;
+  }
+
+  if (noPrivateFilesMessage) {
+    noPrivateFilesMessage.classList.add('d-none');
+  }
+
+  // فرز الملفات بحسب تاريخ الإرسال (الأحدث أولاً)
+  currentPrivateFiles.sort((a, b) => new Date(b.uploadTime) - new Date(a.uploadTime));
+
+  let html = '';
+  currentPrivateFiles.forEach(file => {
+    const fileSize = formatFileSize(file.size);
+    const fileDate = formatDate(file.uploadTime);
+    const fileDateRelative = formatDateRelative(file.uploadTime);
+    const fileIcon = getFileIcon(file.type);
+    const cleanFileName = sanitizeFileName(file.name);
+
+    // تحديد ما إذا كان الملف مرسل أم مستقبل
+    const isReceived = file.recipientName === currentUserInfo?.name;
+    const otherUser = isReceived ? file.senderName : file.recipientName;
+    const direction = isReceived ? 'من' : 'إلى';
+    const badgeClass = isReceived ? 'bg-info' : 'bg-warning';
+    const badgeText = isReceived ? 'مستلم' : 'مرسل';
+
+    html += `
+      <tr class="file-row private-file-row" data-file-id="${file.id}">
+        <td>
+          <div class="d-flex align-items-center">
+            <i class="bi ${fileIcon} file-icon"></i>
+            <span class="file-name">${escapeHtml(cleanFileName)}</span>
+            <span class="badge ${badgeClass} ms-2 small">${badgeText}</span>
+          </div>
+        </td>
+        <td>
+          <div class="d-flex align-items-center">
+            <i class="bi bi-person-circle me-1"></i>
+            <span class="small">${direction} ${escapeHtml(otherUser)}</span>
+          </div>
+        </td>
+        <td>${getFileType(file.type)}</td>
+        <td>${fileSize}</td>
+        <td>
+          <span class="text-muted small" title="${fileDate}">${fileDateRelative}</span>
+          <br>
+          <small class="text-secondary">${fileDate}</small>
+        </td>
+        <td class="file-actions text-center">
+          <button class="btn btn-sm btn-outline-primary action-btn preview-btn" title="معاينة">
+            <i class="bi bi-eye"></i>
+          </button>
+          <a href="${file.path}" download="${cleanFileName}" class="btn btn-sm btn-outline-success action-btn" title="تنزيل">
+            <i class="bi bi-download"></i>
+          </a>
+          <button class="btn btn-sm btn-outline-danger action-btn delete-btn" title="حذف">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  privateFilesList.innerHTML = html;
+
+  // إضافة مستمعي الأحداث للأزرار
+  document.querySelectorAll('.private-file-row .preview-btn').forEach(btn => {
+    btn.addEventListener('click', handlePrivateFilePreview);
+  });
+
+  document.querySelectorAll('.private-file-row .delete-btn').forEach(btn => {
+    btn.addEventListener('click', handlePrivateFileDelete);
+  });
+
+  updatePrivateFileStats();
+}
+
+// معالجة معاينة الملف الخاص
+function handlePrivateFilePreview(e) {
+  const fileId = e.currentTarget.closest('.file-row').dataset.fileId;
+  const file = currentPrivateFiles.find(f => f.id === fileId);
+
+  if (!file) return;
+
+  const cleanFileName = sanitizeFileName(file.name);
+  previewFilename.textContent = cleanFileName;
+  downloadBtn.href = file.path;
+  downloadBtn.download = cleanFileName;
+
+  // تحديد نوع المحتوى وعرضه بالشكل المناسب
+  if (file.type.startsWith('image/')) {
+    // معاينة الصور
+    previewContent.innerHTML = `<img src="${file.path}" alt="${file.name}" class="preview-image">`;
+  } else if (file.type.startsWith('video/')) {
+    // معاينة الفيديو
+    previewContent.innerHTML = `
+      <video controls class="preview-video">
+        <source src="${file.path}" type="${file.type}">
+        متصفحك لا يدعم تشغيل الفيديو.
+      </video>
+    `;
+  } else if (file.type.startsWith('audio/')) {
+    // معاينة الصوت
+    previewContent.innerHTML = `
+      <audio controls class="preview-audio">
+        <source src="${file.path}" type="${file.type}">
+        متصفحك لا يدعم تشغيل الصوت.
+      </audio>
+    `;
+  } else if (file.type === 'application/pdf') {
+    // معاينة PDF
+    previewContent.innerHTML = `
+      <iframe src="${file.path}" class="preview-pdf" title="معاينة PDF">
+        متصفحك لا يدعم معاينة ملفات PDF.
+      </iframe>
+    `;
+  } else if (file.type.startsWith('text/') || file.type === 'application/json') {
+    // معاينة النصوص
+    fetch(file.path)
+      .then(response => response.text())
+      .then(text => {
+        previewContent.innerHTML = `<pre class="preview-text">${escapeHtml(text)}</pre>`;
+      })
+      .catch(() => {
+        previewContent.innerHTML = '<p class="text-muted">تعذر تحميل محتوى الملف</p>';
+      });
+  } else {
+    // أنواع الملفات الأخرى
+    previewContent.innerHTML = `
+      <div class="text-center py-5">
+        <i class="bi ${getFileIcon(file.type)} display-1 text-muted"></i>
+        <h5 class="mt-3">لا يمكن معاينة هذا النوع من الملفات</h5>
+        <p class="text-muted">يمكنك تنزيل الملف لفتحه</p>
+      </div>
+    `;
+  }
+
+  previewModal.show();
+}
+
+// معالجة حذف الملف الخاص
+function handlePrivateFileDelete(e) {
+  const fileId = e.currentTarget.closest('.file-row').dataset.fileId;
+  const file = currentPrivateFiles.find(f => f.id === fileId);
+
+  if (!file) return;
+
+  if (confirm(`هل أنت متأكد من حذف الملف "${file.name}"؟`)) {
+    fetch(`/files/${fileId}`, {
+      method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status) {
+        showNotification(data.message, 'success');
+        // إزالة الملف من القائمة المحلية
+        const index = currentPrivateFiles.findIndex(f => f.id === fileId);
+        if (index !== -1) {
+          currentPrivateFiles.splice(index, 1);
+          renderPrivateFilesList();
+        }
+      } else {
+        showNotification(data.message, 'danger');
+      }
+    })
+    .catch(error => {
+      console.error('خطأ في حذف الملف:', error);
+      showNotification('حدث خطأ أثناء حذف الملف', 'danger');
+    });
+  }
 }
 
 // معالجة معاينة الملف
@@ -879,7 +1107,7 @@ socket.on('connect', () => {
 });
 
 socket.on('all-files', (files) => {
-  // تنظيف أسماء الملفات
+  // تنظيف أسماء الملفات العامة
   currentFiles = files.map(file => ({
     ...file,
     name: sanitizeFileName(file.name)
@@ -887,22 +1115,52 @@ socket.on('all-files', (files) => {
   renderFilesList();
 });
 
+socket.on('all-private-files', (files) => {
+  // تنظيف أسماء الملفات الخاصة
+  currentPrivateFiles = files.map(file => ({
+    ...file,
+    name: sanitizeFileName(file.name)
+  }));
+  renderPrivateFilesList();
+});
+
 socket.on('new-file', (file) => {
-  // تنظيف اسم الملف الجديد
+  // تنظيف اسم الملف الجديد العام
   const cleanFile = {
     ...file,
     name: sanitizeFileName(file.name)
   };
 
-  // إضافة الملف الجديد إلى القائمة
+  // إضافة الملف الجديد إلى القائمة العامة
   const existingIndex = currentFiles.findIndex(f => f.id === cleanFile.id);
   if (existingIndex !== -1) {
     currentFiles[existingIndex] = cleanFile;
   } else {
     currentFiles.push(cleanFile);
-    showNotification('تم إضافة ملف جديد: ' + cleanFile.name, 'info');
+    showNotification('تم إضافة ملف عام جديد: ' + cleanFile.name, 'info');
   }
   renderFilesList();
+});
+
+socket.on('new-private-file', (file) => {
+  // تنظيف اسم الملف الجديد الخاص
+  const cleanFile = {
+    ...file,
+    name: sanitizeFileName(file.name)
+  };
+
+  // إضافة الملف الجديد إلى القائمة الخاصة
+  const existingIndex = currentPrivateFiles.findIndex(f => f.id === cleanFile.id);
+  if (existingIndex !== -1) {
+    currentPrivateFiles[existingIndex] = cleanFile;
+  } else {
+    currentPrivateFiles.push(cleanFile);
+    const isReceived = cleanFile.recipientName === currentUserInfo?.name;
+    const direction = isReceived ? 'من' : 'إلى';
+    const otherUser = isReceived ? cleanFile.senderName : cleanFile.recipientName;
+    showNotification(`ملف خاص جديد ${direction} ${otherUser}: ${cleanFile.name}`, 'success');
+  }
+  renderPrivateFilesList();
 });
 
 socket.on('delete-file', (fileId) => {
@@ -918,6 +1176,9 @@ socket.on('user-info', (userInfo) => {
   // حفظ معلومات المستخدم الحالي
   currentUserInfo = userInfo;
   console.log('معلومات المستخدم:', userInfo);
+
+  // تحديث الملفات الخاصة بعد الحصول على معلومات المستخدم
+  updatePrivateFilesList();
 });
 
 socket.on('connected-users-update', (data) => {

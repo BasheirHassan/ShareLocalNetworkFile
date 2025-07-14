@@ -187,6 +187,7 @@ app.post('/upload', (req, res) => {
     }
 
     const file = req.files.file;
+    const uploaderSocketId = req.body.uploaderSocketId; // معرف المستخدم الذي رفع الملف
 
     // تنظيف اسم الملف وضمان الترميز الصحيح
     const originalFileName = sanitizeFileName(file.name);
@@ -207,6 +208,10 @@ app.post('/upload', (req, res) => {
         return res.status(500).json({ status: false, message: err.message });
       }
 
+      // الحصول على معلومات المستخدم الذي رفع الملف
+      const uploaderInfo = connectedUsersList.get(uploaderSocketId);
+      const uploaderName = uploaderInfo ? uploaderInfo.name : 'مستخدم مجهول';
+
       // إضافة الملف إلى قائمة الملفات المشتركة
       const fileInfo = {
         id: Date.now().toString(),
@@ -214,7 +219,10 @@ app.post('/upload', (req, res) => {
         path: `/uploads/${fileName}`,
         size: file.size,
         type: file.mimetype,
-        uploadTime: new Date().toISOString()
+        uploadTime: new Date().toISOString(),
+        isPrivate: false, // ملف عام
+        uploadedBy: uploaderName,
+        uploaderSocketId: uploaderSocketId
       };
 
       sharedFiles.push(fileInfo);
@@ -233,12 +241,43 @@ app.post('/upload', (req, res) => {
   }
 });
 
-// مسار للحصول على قائمة الملفات المشتركة
+// مسار للحصول على قائمة الملفات المشتركة العامة فقط
 app.get('/files', (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
+  // تصفية الملفات العامة فقط
+  const publicFiles = sharedFiles.filter(file => !file.isPrivate);
+
   // التأكد من الترميز الصحيح لأسماء الملفات
-  const filesWithCorrectEncoding = sharedFiles.map(file => ({
+  const filesWithCorrectEncoding = publicFiles.map(file => ({
+    ...file,
+    name: sanitizeFileName(file.name)
+  }));
+
+  res.json(filesWithCorrectEncoding);
+});
+
+// مسار للحصول على الملفات الخاصة للمستخدم الحالي
+app.get('/files/private/:socketId', (req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+  const socketId = req.params.socketId;
+  const userInfo = connectedUsersList.get(socketId);
+
+  if (!userInfo) {
+    return res.status(404).json({ status: false, message: 'المستخدم غير موجود' });
+  }
+
+  // تصفية الملفات الخاصة المرسلة للمستخدم الحالي أو المرسلة منه
+  const privateFiles = sharedFiles.filter(file =>
+    file.isPrivate && (
+      file.recipientName === userInfo.name ||
+      file.senderName === userInfo.name
+    )
+  );
+
+  // التأكد من الترميز الصحيح لأسماء الملفات
+  const filesWithCorrectEncoding = privateFiles.map(file => ({
     ...file,
     name: sanitizeFileName(file.name)
   }));
@@ -274,7 +313,7 @@ app.delete('/files/:id', (req, res) => {
   });
 });
 
-// مسار لإرسال ملف لمستخدم محدد
+// مسار لإرسال ملف لمستخدم محدد (ملف خاص)
 app.post('/send-file', (req, res) => {
   try {
     if (!req.files || !req.files.file) {
@@ -282,6 +321,8 @@ app.post('/send-file', (req, res) => {
     }
 
     const targetUser = req.body.targetUser;
+    const senderSocketId = req.body.senderSocketId;
+
     if (!targetUser) {
       return res.status(400).json({ status: false, message: 'لم يتم تحديد المستخدم المستهدف' });
     }
@@ -292,11 +333,15 @@ app.post('/send-file', (req, res) => {
       return res.status(404).json({ status: false, message: 'المستخدم المستهدف غير متصل' });
     }
 
+    // الحصول على معلومات المرسل
+    const senderInfo = connectedUsersList.get(senderSocketId);
+    const senderName = senderInfo ? senderInfo.name : req.body.senderName || 'مستخدم مجهول';
+
     const file = req.files.file;
-    const fileName = Buffer.from(file.name, 'latin1').toString('utf8');
+    const fileName = sanitizeFileName(file.name);
     const fileExtension = path.extname(fileName);
     const timestamp = Date.now();
-    const uniqueFileName = `${timestamp}_${fileName}`;
+    const uniqueFileName = `private_${timestamp}_${fileName}`;
     const filePath = path.join(uploadsDir, uniqueFileName);
 
     // نقل الملف إلى مجلد التحميلات
@@ -305,7 +350,7 @@ app.post('/send-file', (req, res) => {
         return res.status(500).json({ status: false, message: err.message });
       }
 
-      // إضافة الملف إلى قائمة الملفات المشتركة
+      // إضافة الملف إلى قائمة الملفات المشتركة كملف خاص
       const fileInfo = {
         id: timestamp.toString(),
         name: fileName,
@@ -313,7 +358,11 @@ app.post('/send-file', (req, res) => {
         size: file.size,
         type: file.mimetype,
         uploadTime: new Date().toISOString(),
-        sentTo: targetUser
+        isPrivate: true, // ملف خاص
+        senderName: senderName,
+        recipientName: targetUser,
+        senderSocketId: senderSocketId,
+        recipientSocketId: targetUserInfo.id
       };
 
       sharedFiles.push(fileInfo);
@@ -323,7 +372,7 @@ app.post('/send-file', (req, res) => {
       if (targetSocket) {
         targetSocket.emit('file-received', {
           fileName: fileName,
-          senderName: req.body.senderName || 'مستخدم مجهول',
+          senderName: senderName,
           fileUrl: fileInfo.path,
           fileInfo: fileInfo
         });
@@ -335,8 +384,12 @@ app.post('/send-file', (req, res) => {
           file: fileInfo
         });
 
-        // إشعار جميع المستخدمين بالملف الجديد
-        io.emit('new-file', fileInfo);
+        // إرسال إشعار للمرسل والمستقبل فقط بالملف الجديد (ليس لجميع المستخدمين)
+        const senderSocket = io.sockets.sockets.get(senderSocketId);
+        if (senderSocket) {
+          senderSocket.emit('new-private-file', fileInfo);
+        }
+        targetSocket.emit('new-private-file', fileInfo);
       } else {
         // المستخدم المستهدف غير متصل
         res.status(404).json({ status: false, message: 'المستخدم المستهدف غير متصل حالياً' });
@@ -513,8 +566,18 @@ io.on('connection', (socket) => {
 
   console.log(`مستخدم جديد متصل: ${userName} - العدد الحالي: ${connectedUsers}`);
 
-  // إرسال قائمة الملفات الحالية للمستخدم الجديد
-  socket.emit('all-files', sharedFiles);
+  // إرسال قائمة الملفات العامة للمستخدم الجديد
+  const publicFiles = sharedFiles.filter(file => !file.isPrivate);
+  socket.emit('all-files', publicFiles);
+
+  // إرسال قائمة الملفات الخاصة للمستخدم الجديد
+  const privateFiles = sharedFiles.filter(file =>
+    file.isPrivate && (
+      file.recipientName === userInfo.name ||
+      file.senderName === userInfo.name
+    )
+  );
+  socket.emit('all-private-files', privateFiles);
 
   // إرسال معلومات المستخدم الجديد
   socket.emit('user-info', userInfo);

@@ -35,18 +35,37 @@ body {
 }
 
 /* أنماط الإحصائيات في header قسم الملفات المشتركة */
-.files-header-stats {
+.files-header-stats, .private-files-header-stats {
   font-size: 0.85rem;
   opacity: 0.8;
 }
 
-.files-header-stats:hover {
+.files-header-stats:hover, .private-files-header-stats:hover {
   opacity: 1;
 }
 
-.files-header-stats i {
+.files-header-stats i, .private-files-header-stats i {
   font-size: 0.9rem;
   opacity: 0.7;
+}
+
+/* أنماط خاصة بالملفات الخاصة */
+.private-file-row {
+  background-color: rgba(25, 135, 84, 0.05);
+}
+
+.private-file-row:hover {
+  background-color: rgba(25, 135, 84, 0.1);
+}
+
+.private-file-row .badge {
+  font-size: 0.7rem;
+}
+
+/* مؤشرات بصرية للملفات */
+.file-row .badge {
+  font-size: 0.7rem;
+  font-weight: 500;
 }
 
 /* أنماط tooltip عدد المتصلين */

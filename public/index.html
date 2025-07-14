@@ -155,21 +155,21 @@
       </div>
     </div>
 
-    <!-- قسم الملفات المشتركة -->
+    <!-- قسم الملفات المشتركة العامة -->
     <div class="card shadow-sm mt-5">
       <div class="card-header bg-primary text-dark">
         <div class="d-flex justify-content-between align-items-center">
           <div class="d-flex align-items-center gap-4">
             <div class="d-flex text-light align-items-center">
               <i class="bi bi-folder-fill me-2 fs-5"></i>
-              <h5 class="mb-0 fw-semibold">الملفات المشتركة</h5>
+              <h5 class="mb-0 fw-semibold">الملفات المشتركة العامة</h5>
             </div>
             <!-- إحصائيات سريعة بجوار العنوان -->
             <div class="d-flex align-items-center gap-3 text-muted files-header-stats">
               <div class="d-flex text-light align-items-center gap-1"
                    data-bs-toggle="tooltip"
                    data-bs-placement="bottom"
-                   title="عدد الملفات">
+                   title="عدد الملفات العامة">
                 <i class="bi bi-files"></i>
                 <small id="header-total-files">0</small>
                 <small>ملف</small>
@@ -230,11 +230,77 @@
           </table>
         </div>
         
-        <!-- رسالة عدم وجود ملفات -->
+        <!-- رسالة عدم وجود ملفات عامة -->
         <div id="no-files-message" class="alert alert-secondary text-center m-3 d-none">
           <i class="bi bi-folder-x fs-3"></i>
-          <h5 class="mt-2">لا توجد ملفات مشتركة</h5>
-          <p class="text-muted mb-0">ابدأ برفع ملف جديد لمشاركته</p>
+          <h5 class="mt-2">لا توجد ملفات مشتركة عامة</h5>
+          <p class="text-muted mb-0">ابدأ برفع ملف جديد لمشاركته مع الجميع</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- قسم الملفات الخاصة -->
+    <div class="card shadow-sm mt-4">
+      <div class="card-header bg-success text-white">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-4">
+            <div class="d-flex text-light align-items-center">
+              <i class="bi bi-lock-fill me-2 fs-5"></i>
+              <h5 class="mb-0 fw-semibold">الملفات الخاصة</h5>
+            </div>
+            <!-- إحصائيات سريعة للملفات الخاصة -->
+            <div class="d-flex align-items-center gap-3 text-muted private-files-header-stats">
+              <div class="d-flex text-light align-items-center gap-1"
+                   data-bs-toggle="tooltip"
+                   data-bs-placement="bottom"
+                   title="عدد الملفات الخاصة">
+                <i class="bi bi-file-lock"></i>
+                <small id="header-total-private-files">0</small>
+                <small>ملف</small>
+              </div>
+              <div class="d-flex text-light align-items-center gap-1"
+                   data-bs-toggle="tooltip"
+                   data-bs-placement="bottom"
+                   title="الحجم الإجمالي للملفات الخاصة">
+                <i class="bi bi-hdd"></i>
+                <small id="header-total-private-size">0 بايت</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <!-- جدول الملفات الخاصة -->
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col"><i class="bi bi-file-earmark-lock me-1"></i>اسم الملف</th>
+                <th scope="col"><i class="bi bi-person me-1"></i>المرسل/المستقبل</th>
+                <th scope="col"><i class="bi bi-tag me-1"></i>النوع</th>
+                <th scope="col"><i class="bi bi-hdd me-1"></i>الحجم</th>
+                <th scope="col"><i class="bi bi-calendar me-1"></i>تاريخ الإرسال</th>
+                <th scope="col" class="text-center"><i class="bi bi-gear me-1"></i>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="private-files-list">
+              <tr>
+                <td colspan="6" class="text-center py-5">
+                  <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">جاري التحميل...</span>
+                  </div>
+                  <p class="mt-2 text-muted">جاري تحميل الملفات الخاصة...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- رسالة عدم وجود ملفات خاصة -->
+        <div id="no-private-files-message" class="alert alert-info text-center m-3 d-none">
+          <i class="bi bi-lock-fill fs-3 text-success"></i>
+          <h5 class="mt-2">لا توجد ملفات خاصة</h5>
+          <p class="text-muted mb-0">الملفات المرسلة إليك أو المرسلة منك بشكل خاص ستظهر هنا</p>
         </div>
       </div>
     </div>
