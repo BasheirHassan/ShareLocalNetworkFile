@@ -1,3 +1,8 @@
+/**
+ * Share Local Network File - التطبيق الرئيسي
+ * تطبيق مشاركة ملفات عبر الشبكة المحلية
+ */
+
 // استيراد الدوال المساعدة
 import { 
   formatFileSize, 
@@ -29,7 +34,7 @@ const previewModal = new bootstrap.Modal(document.getElementById('preview-modal'
 const previewContent = document.getElementById('preview-content');
 const previewFilename = document.getElementById('preview-filename');
 const downloadBtn = document.getElementById('download-btn');
-const qrcodeContainer = document.getElementById('qrcode');
+// تم حذف qrcodeContainer القديم
 const dropArea = document.getElementById('drop-area');
 const connectionStatus = document.getElementById('connection-status');
 const totalFiles = document.getElementById('total-files');
@@ -65,15 +70,39 @@ function sanitizeFileName(fileName) {
 // الحصول على عنوان الخادم
 const serverUrl = window.location.href;
 
-// إنشاء رمز QR للوصول السريع
-new QRCode(qrcodeContainer, {
-  text: serverUrl,
-  width: 150,
-  height: 150,
-  colorDark: "#000000",
-  colorLight: "#ffffff",
-  correctLevel: QRCode.CorrectLevel.H
+// إنشاء رمز QR مصغر للزاوية
+const miniQrcodeContainer = document.getElementById('mini-qrcode');
+if (miniQrcodeContainer) {
+  new QRCode(miniQrcodeContainer, {
+    text: serverUrl,
+    width: 120,
+    height: 120,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+// دالة لإظهار/إخفاء رمز QR المصغر
+function toggleMiniQR() {
+  const miniQrPopup = document.getElementById('mini-qr-popup');
+  if (miniQrPopup) {
+    miniQrPopup.classList.toggle('d-none');
+  }
+}
+
+// إخفاء رمز QR المصغر عند النقر خارجه
+document.addEventListener('click', function(event) {
+  const miniQrPopup = document.getElementById('mini-qr-popup');
+  const qrButton = event.target.closest('[onclick="toggleMiniQR()"]');
+
+  if (miniQrPopup && !miniQrPopup.contains(event.target) && !qrButton) {
+    miniQrPopup.classList.add('d-none');
+  }
 });
+
+// جعل دالة toggleMiniQR متاحة عالمياً
+window.toggleMiniQR = toggleMiniQR;
 
 // عرض معلومات الشبكة
 if (networkInfo) {
@@ -506,6 +535,12 @@ updateFilesList();
 
 // تنظيف الملفات القديمة عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
+  // تهيئة tooltips
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+
   // انتظار ثانية واحدة لضمان تحميل كامل للصفحة
   setTimeout(() => {
     cleanupOldFiles();

@@ -1,16 +1,19 @@
 {
   "name": "share-local-network-file",
   "version": "1.0.0",
-  "description": "تطبيق مشاركة ملفات بين الأجهزة على نفس الشبكة",
+  "description": "Share Local Network File - تطبيق مشاركة ملفات بين الأجهزة على نفس الشبكة المحلية",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "keywords": [
+    "share-local-network-file",
     "file-sharing",
     "network",
-    "local-network"
+    "local-network",
+    "file-transfer",
+    "arabic"
   ],
   "author": "",
   "license": "MIT",
