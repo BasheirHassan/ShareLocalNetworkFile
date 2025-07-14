@@ -305,15 +305,94 @@ app.get('/cleanup-settings', (req, res) => {
   });
 });
 
+// متغير لتتبع عدد المتصلين ومعلوماتهم
+let connectedUsers = 0;
+let connectedUsersList = new Map(); // Map لتخزين معلومات المستخدمين
+
+// دالة لتوليد اسم مستخدم تلقائي
+function generateUserName() {
+  const adjectives = ['سريع', 'ذكي', 'نشط', 'مبدع', 'ماهر', 'خبير', 'متقن', 'بارع'];
+  const nouns = ['مستخدم', 'زائر', 'ضيف', 'عضو', 'مشارك', 'متصفح', 'مطور', 'مساعد'];
+
+  const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+  const randomNumber = Math.floor(Math.random() * 999) + 1;
+
+  return `${randomAdjective} ${randomNoun} ${randomNumber}`;
+}
+
+// دالة للحصول على قائمة أسماء المستخدمين المتصلين
+function getConnectedUserNames() {
+  return Array.from(connectedUsersList.values()).map(user => user.name);
+}
+
+// دالة للحصول على معلومات مفصلة عن المستخدمين المتصلين
+function getConnectedUsersDetails() {
+  return Array.from(connectedUsersList.values()).map(user => ({
+    name: user.name,
+    joinTime: user.joinTime,
+    duration: Math.floor((new Date() - new Date(user.joinTime)) / 1000) // بالثواني
+  }));
+}
+
 // إعداد Socket.IO للاتصال المباشر
 io.on('connection', (socket) => {
-  console.log('مستخدم جديد متصل');
+  // إنشاء معلومات المستخدم الجديد
+  const userName = generateUserName();
+  const userInfo = {
+    id: socket.id,
+    name: userName,
+    joinTime: new Date().toISOString(),
+    ip: socket.handshake.address
+  };
+
+  // إضافة المستخدم إلى القائمة
+  connectedUsersList.set(socket.id, userInfo);
+  connectedUsers++;
+
+  console.log(`مستخدم جديد متصل: ${userName} - العدد الحالي: ${connectedUsers}`);
 
   // إرسال قائمة الملفات الحالية للمستخدم الجديد
   socket.emit('all-files', sharedFiles);
 
+  // إرسال معلومات المستخدم الجديد
+  socket.emit('user-info', userInfo);
+
+  // إرسال عدد المتصلين وقائمة أسمائهم لجميع المستخدمين
+  const userNames = getConnectedUserNames();
+  const usersDetails = getConnectedUsersDetails();
+  io.emit('connected-users-update', {
+    count: connectedUsers,
+    userNames: userNames,
+    usersDetails: usersDetails
+  });
+
+  // إرسال إشعار للمستخدمين الآخرين (ليس للمستخدم الجديد نفسه)
+  if (connectedUsers > 1) {
+    socket.broadcast.emit('user-joined', { name: userName });
+  }
+
   socket.on('disconnect', () => {
-    console.log('انقطع اتصال المستخدم');
+    // إزالة المستخدم من القائمة
+    const disconnectedUser = connectedUsersList.get(socket.id);
+    connectedUsersList.delete(socket.id);
+    connectedUsers--;
+
+    console.log(`انقطع اتصال المستخدم: ${disconnectedUser?.name || 'غير معروف'} - العدد الحالي: ${connectedUsers}`);
+
+    // إرسال عدد المتصلين المحدث وقائمة أسمائهم لجميع المستخدمين
+    const userNames = getConnectedUserNames();
+    const usersDetails = getConnectedUsersDetails();
+    io.emit('connected-users-update', {
+      count: connectedUsers,
+      userNames: userNames,
+      usersDetails: usersDetails
+    });
+
+    // إرسال إشعار للمستخدمين المتبقين
+    if (connectedUsers > 0 && disconnectedUser) {
+      socket.broadcast.emit('user-left', { name: disconnectedUser.name });
+    }
   });
 });
 

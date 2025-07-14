@@ -49,6 +49,90 @@ body {
   opacity: 0.7;
 }
 
+/* أنماط tooltip عدد المتصلين */
+.tooltip-inner {
+  max-width: 350px;
+  text-align: right;
+  direction: rtl;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.users-tooltip .tooltip-inner {
+  background-color: #ffffff;
+  color: #333;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  border-radius: 0.5rem;
+}
+
+.users-tooltip .tooltip-arrow::before {
+  border-bottom-color: #dee2e6;
+}
+
+#connected-users-tooltip {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+#connected-users-tooltip:hover {
+  transform: scale(1.05);
+}
+
+#connected-users-tooltip .bi-people-fill {
+  transition: color 0.3s ease;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.1));
+}
+
+#connected-users-tooltip:hover .bi-people-fill {
+  color: #0d6efd !important;
+  filter: drop-shadow(0 0 4px rgba(13, 110, 253, 0.3));
+}
+
+/* تحسين عرض عداد المتصلين */
+#connected-users-tooltip .bg-dark {
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+#connected-users-tooltip:hover .bg-dark {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: scale(1.02);
+}
+
+#connected-users-count {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+#connected-users-tooltip:hover #connected-users-count {
+  color: #ffc107 !important;
+  text-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+}
+
+/* تحسين عرض المستخدمين في tooltip */
+.users-tooltip .badge {
+  font-size: 0.7rem;
+  padding: 0.25em 0.5em;
+}
+
+.users-tooltip .border {
+  border-width: 1px !important;
+  border-color: #e9ecef !important;
+}
+
+.users-tooltip .bg-warning.bg-opacity-10 {
+  background-color: rgba(255, 193, 7, 0.1) !important;
+  border-color: rgba(255, 193, 7, 0.3) !important;
+}
+
+.users-tooltip .bg-light {
+  background-color: #f8f9fa !important;
+}
+
 /* تحسين مظهر الإحصائيات على الشاشات الصغيرة */
 @media (max-width: 768px) {
   .files-header-stats {
@@ -68,5 +152,11 @@ body {
   .card-header .d-flex.gap-4 {
     flex-direction: column;
     gap: 1rem !important;
+  }
+
+  /* تحسين tooltip على الشاشات الصغيرة */
+  .tooltip-inner {
+    max-width: 250px;
+    font-size: 0.85rem;
   }
 }

@@ -37,8 +37,121 @@ const downloadBtn = document.getElementById('download-btn');
 // تم حذف qrcodeContainer القديم
 const dropArea = document.getElementById('drop-area');
 const connectionStatus = document.getElementById('connection-status');
+const connectedUsersCount = document.getElementById('connected-users-count');
+const connectedUsersTooltip = document.getElementById('connected-users-tooltip');
 // تم حذف العناصر القديمة
 const browseBtn = document.getElementById('browse-btn');
+
+// متغيرات لتتبع معلومات المستخدمين
+let currentUserInfo = null;
+let connectedUserNames = [];
+let connectedUsersDetails = [];
+
+// دالة لتنسيق مدة الاتصال
+function formatConnectionDuration(seconds) {
+  if (seconds < 60) {
+    return `${seconds} ثانية`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes} دقيقة`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return hours > 0 ? `${hours} ساعة${minutes > 0 ? ` و ${minutes} دقيقة` : ''}` : `${minutes} دقيقة`;
+  }
+}
+
+// دالة لتحديث tooltip عدد المتصلين
+function updateConnectedUsersTooltip(count, usersDetails = []) {
+  if (!connectedUsersTooltip) return;
+
+  let tooltipContent = '';
+
+  if (count === 0) {
+    tooltipContent = `
+      <div class="text-center p-2">
+        <i class="bi bi-person-x text-muted fs-4"></i>
+        <div class="mt-2 fw-bold text-muted">لا يوجد مستخدمون متصلون</div>
+      </div>
+    `;
+  } else if (count === 1) {
+    tooltipContent = `
+      <div class="text-center p-2">
+        <i class="bi bi-person-check text-success fs-4"></i>
+        <div class="mt-2 fw-bold text-success">مستخدم واحد متصل</div>
+      </div>
+    `;
+    if (usersDetails.length > 0) {
+      const user = usersDetails[0];
+      const duration = formatConnectionDuration(user.duration);
+      const isCurrentUser = currentUserInfo && user.name === currentUserInfo.name;
+      const userIcon = isCurrentUser ? 'bi-person-fill-check text-warning' : 'bi-person-circle text-primary';
+      const userLabel = isCurrentUser ? ' (أنت)' : '';
+      const userBadge = isCurrentUser ? '<span class="badge bg-warning text-dark ms-1">أنت</span>' : '';
+
+      tooltipContent += `
+        <hr class="my-2">
+        <div class="p-2 bg-light rounded">
+          <div class="d-flex align-items-center mb-1">
+            <i class="bi ${userIcon} me-2"></i>
+            <span class="fw-semibold">${user.name}</span>
+            ${userBadge}
+          </div>
+          <div class="text-muted small">
+            <i class="bi bi-clock me-1"></i>متصل منذ ${duration}
+          </div>
+        </div>
+      `;
+    }
+  } else {
+    tooltipContent = `
+      <div class="text-center p-2">
+        <i class="bi bi-people-fill text-success fs-4"></i>
+        <div class="mt-2 fw-bold text-success">${count} مستخدم متصل</div>
+      </div>
+    `;
+    if (usersDetails.length > 0) {
+      tooltipContent += '<hr class="my-2"><div class="px-2">';
+      usersDetails.forEach((user, index) => {
+        const duration = formatConnectionDuration(user.duration);
+        const isCurrentUser = currentUserInfo && user.name === currentUserInfo.name;
+        const userIcon = isCurrentUser ? 'bi-person-fill-check text-warning' : 'bi-person-circle text-primary';
+        const userBadge = isCurrentUser ? '<span class="badge bg-warning text-dark ms-1">أنت</span>' : '';
+        const bgClass = isCurrentUser ? 'bg-warning bg-opacity-10' : 'bg-light';
+
+        tooltipContent += `
+          <div class="p-2 mb-2 ${bgClass} rounded border">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <div class="d-flex align-items-center">
+                <i class="bi ${userIcon} me-2"></i>
+                <span class="fw-semibold small">${user.name}</span>
+                ${userBadge}
+              </div>
+            </div>
+            <div class="text-muted small">
+              <i class="bi bi-clock me-1"></i>متصل منذ ${duration}
+            </div>
+          </div>
+        `;
+      });
+      tooltipContent += '</div>';
+    }
+  }
+
+  // تحديث tooltip
+  const tooltip = bootstrap.Tooltip.getInstance(connectedUsersTooltip);
+  if (tooltip) {
+    tooltip.dispose();
+  }
+
+  connectedUsersTooltip.setAttribute('title', tooltipContent);
+  new bootstrap.Tooltip(connectedUsersTooltip, {
+    html: true,
+    placement: 'bottom',
+    trigger: 'hover focus',
+    customClass: 'users-tooltip'
+  });
+}
 
 // عناصر الإحصائيات في header قسم الملفات المشتركة
 const headerTotalFiles = document.getElementById('header-total-files');
@@ -493,6 +606,13 @@ browseBtn.addEventListener('click', (e) => {
 // مستمعي أحداث Socket.IO
 socket.on('connect', () => {
   console.log('تم الاتصال بالخادم');
+
+  // تحديث حالة الاتصال
+  if (connectionStatus) {
+    connectionStatus.textContent = 'متصل';
+    connectionStatus.parentElement.classList.remove('text-danger');
+    connectionStatus.parentElement.classList.add('text-light');
+  }
 });
 
 socket.on('all-files', (files) => {
@@ -531,13 +651,99 @@ socket.on('delete-file', (fileId) => {
   }
 });
 
+socket.on('user-info', (userInfo) => {
+  // حفظ معلومات المستخدم الحالي
+  currentUserInfo = userInfo;
+  console.log('معلومات المستخدم:', userInfo);
+});
+
+socket.on('connected-users-update', (data) => {
+  const { count, userNames, usersDetails } = data;
+  connectedUserNames = userNames;
+  connectedUsersDetails = usersDetails || [];
+
+  // تحديث عدد المتصلين في شريط التنقل
+  if (connectedUsersCount) {
+    connectedUsersCount.textContent = count;
+
+    // إضافة تأثير بصري عند تغيير العدد
+    connectedUsersCount.parentElement.classList.add('text-warning');
+    setTimeout(() => {
+      connectedUsersCount.parentElement.classList.remove('text-warning');
+      connectedUsersCount.parentElement.classList.add('text-light');
+    }, 1000);
+
+    // تحديث النص بناءً على العدد
+    const textElement = document.querySelector('#connected-users-tooltip small');
+    if (textElement) {
+      if (count === 0) {
+        textElement.textContent = 'غير متصل';
+        textElement.className = 'text-danger';
+      } else if (count === 1) {
+        textElement.textContent = 'متصل';
+        textElement.className = 'text-muted';
+      } else {
+        textElement.textContent = 'متصل';
+        textElement.className = 'text-muted';
+      }
+    }
+
+    // تحديث لون الأيقونة بناءً على العدد
+    const iconElement = document.querySelector('#connected-users-tooltip .bi-people-fill');
+    if (iconElement) {
+      if (count === 0) {
+        iconElement.className = 'bi bi-people-fill me-2 text-muted fs-5';
+      } else {
+        iconElement.className = 'bi bi-people-fill me-2 text-success fs-5';
+      }
+    }
+  }
+
+  // تحديث tooltip مع تفاصيل المستخدمين
+  updateConnectedUsersTooltip(count, connectedUsersDetails);
+
+  console.log(`عدد المتصلين الحالي: ${count}، التفاصيل:`, connectedUsersDetails);
+});
+
+socket.on('user-joined', (data) => {
+  const userName = data?.name || 'مستخدم جديد';
+  showNotification(`انضم ${userName}`, 'info');
+});
+
+socket.on('user-left', (data) => {
+  const userName = data?.name || 'أحد المستخدمين';
+  showNotification(`غادر ${userName}`, 'warning');
+});
+
 socket.on('disconnect', () => {
   console.log('انقطع الاتصال بالخادم');
   showNotification('انقطع الاتصال بالخادم', 'warning');
+
+  // تحديث حالة الاتصال
+  if (connectionStatus) {
+    connectionStatus.textContent = 'غير متصل';
+    connectionStatus.parentElement.classList.add('text-danger');
+    connectionStatus.parentElement.classList.remove('text-light');
+  }
 });
 
 // تحميل قائمة الملفات عند بدء التطبيق
 updateFilesList();
+
+// تحديث tooltip عدد المتصلين كل 30 ثانية لإظهار مدة الاتصال المحدثة
+setInterval(() => {
+  if (connectedUsersDetails.length > 0) {
+    // تحديث مدة الاتصال للمستخدمين
+    const updatedDetails = connectedUsersDetails.map(user => ({
+      ...user,
+      duration: user.duration + 30 // إضافة 30 ثانية
+    }));
+    connectedUsersDetails = updatedDetails;
+
+    // تحديث tooltip
+    updateConnectedUsersTooltip(connectedUsersDetails.length, connectedUsersDetails);
+  }
+}, 30000); // كل 30 ثانية
 
 // تنظيف الملفات القديمة عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
