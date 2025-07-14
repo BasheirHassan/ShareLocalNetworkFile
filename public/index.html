@@ -35,15 +35,7 @@
 
   <div class="container py-5">
     <!-- معلومات الشبكة -->
-    <div id="network-info" class="alert alert-info shadow-sm">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-        <div>
-          <strong>معلومات الاتصال:</strong>
-          <span class="ms-2">جاري تحميل معلومات الشبكة...</span>
-        </div>
-      </div>
-    </div>
+
 
     <!-- القسم الرئيسي -->
     <div class="row g-4">
@@ -51,19 +43,20 @@
       <div class="col-12 col-lg-8">
         <div class="card shadow-sm h-100">
           <div class="card-header bg-primary text-white">
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center space-between">
               <i class="bi bi-cloud-upload-fill me-2 fs-5"></i>
               <h5 class="mb-0 fw-semibold">رفع ملف جديد</h5>
+              <div id="network-info" ></div>
             </div>
           </div>
-          <div class="card-body p-4">
-            <form id="upload-form" class="h-100 d-flex flex-column">
-              <div id="drop-area" class="border-2 border-dashed rounded-3 p-4 text-center mb-4 flex-grow-1 d-flex flex-column justify-content-center align-items-center" style="border-style: dashed; background-color: #f8f9fa;">
+          <div class="card-body p-3">
+            <form id="upload-form" class="d-flex flex-column">
+              <div id="drop-area" class="border-2 border-dashed rounded-3 p-3 text-center mb-3 d-flex flex-column justify-content-center align-items-center" style="border-style: dashed; background-color: #f8f9fa; min-height: 180px;">
                 <div class="upload-content">
-                  <i class="bi bi-cloud-arrow-up text-primary" style="font-size: 4rem;"></i>
-                  <h4 class="h5 mb-2 text-primary fw-semibold">اسحب وأفلت الملفات هنا</h4>
-                  <p class="text-muted mb-3">أو انقر لاختيار الملفات من جهازك</p>
-                  <button type="button" class="btn btn-primary" id="browse-btn">
+                  <i class="bi bi-cloud-arrow-up text-primary" style="font-size: 3rem;"></i>
+                  <h4 class="h6 mb-2 text-primary fw-semibold">اسحب وأفلت الملفات هنا</h4>
+                  <p class="text-muted mb-2 small">أو انقر لاختيار الملفات من جهازك</p>
+                  <button type="button" class="btn btn-primary btn-sm" id="browse-btn">
                     <i class="bi bi-folder2-open me-1"></i>
                     تصفح الملفات
                   </button>
@@ -72,14 +65,14 @@
               </div>
 
               <!-- شريط التقدم -->
-              <div class="progress mb-3 d-none" id="upload-progress" style="height: 20px;">
+              <div class="progress mb-2 d-none" id="upload-progress" style="height: 15px;">
                 <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%">
-                  <span class="progress-text">0%</span>
+                  <span class="progress-text small">0%</span>
                 </div>
               </div>
 
               <!-- زر الرفع -->
-              <button type="submit" class="btn btn-success btn-lg w-100 shadow-sm" id="upload-btn">
+              <button type="submit" class="btn btn-success w-100 shadow-sm" id="upload-btn">
                 <i class="bi bi-cloud-upload me-2"></i>
                 <span>رفع الملفات</span>
               </button>
@@ -90,16 +83,16 @@
 
       <!-- قسم رمز QR -->
       <div class="col-12 col-lg-4">
-        <div class="card shadow-sm h-100">
-          <div class="card-header bg-success text-white">
+        <div class="card shadow-sm">
+          <div class="card-header bg-success text-white py-2">
             <div class="d-flex align-items-center">
-              <i class="bi bi-qr-code me-2 fs-5"></i>
-              <h5 class="mb-0 fw-semibold">مشاركة سريعة</h5>
+              <i class="bi bi-qr-code me-2"></i>
+              <h6 class="mb-0 fw-semibold">مشاركة سريعة</h6>
             </div>
           </div>
-          <div class="card-body text-center d-flex flex-column justify-content-center align-items-center p-4">
-            <p class="mb-3 text-muted">امسح رمز QR للوصول من جهاز آخر</p>
-            <div id="qrcode" class="bg-white p-3 rounded-3 shadow-sm mb-3"></div>
+          <div class="card-body text-center p-3">
+            <p class="mb-2 text-muted small">امسح رمز QR للوصول من جهاز آخر</p>
+            <div id="qrcode" class="bg-white p-2 rounded-3 shadow-sm mb-2 mx-auto" style="width: fit-content;"></div>
             <small class="text-muted">
               <i class="bi bi-wifi me-1"></i>
               تأكد من اتصال الجهازين بنفس الشبكة
