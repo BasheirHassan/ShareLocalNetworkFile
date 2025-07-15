@@ -4,16 +4,19 @@
  */
 
 // استيراد الدوال المساعدة
-import { 
-  formatFileSize, 
-  formatDate, 
-  formatDateRelative, 
-  formatDateShort, 
-  formatDateFull, 
-  getFileIcon, 
-  getFileType, 
-  escapeHtml, 
-  showNotification 
+import {
+  formatFileSize,
+  formatDate,
+  formatDateRelative,
+  formatDateShort,
+  formatDateFull,
+  getFileIcon,
+  getFileType,
+  escapeHtml,
+  showNotification,
+  validateUsername,
+  saveUsernameToStorage,
+  getUsernameFromStorage
 } from './utils.js';
 
 // إعداد اتصال Socket.IO
@@ -47,6 +50,10 @@ const connectedUsersList = document.getElementById('connected-users-list');
 const connectedUsersBadge = document.getElementById('connected-users-badge');
 const noUsersMessage = document.getElementById('no-users-message');
 
+// عناصر تعديل اسم المستخدم
+const usernameInput = document.getElementById('username-input');
+const saveUsernameBtn = document.getElementById('save-username-btn');
+
 // عناصر نموذج إرسال الملف
 const sendFileModal = new bootstrap.Modal(document.getElementById('send-file-modal'));
 const sendFileForm = document.getElementById('send-file-form');
@@ -64,6 +71,59 @@ let currentUserInfo = null;
 let connectedUserNames = [];
 let connectedUsersDetails = [];
 let selectedTargetUser = null;
+
+// دالة لتحديث عرض اسم المستخدم في الواجهة
+function updateUsernameDisplay(highlight = false) {
+  if (currentUserInfo && usernameInput) {
+    usernameInput.value = currentUserInfo.name;
+    usernameInput.placeholder = currentUserInfo.name;
+
+    // إضافة تأثير بصري عند تحديث الاسم
+    if (highlight) {
+      usernameInput.classList.add('username-updated');
+      setTimeout(() => {
+        usernameInput.classList.remove('username-updated');
+      }, 1500);
+    }
+  }
+}
+
+// دالة لحفظ اسم المستخدم الجديد
+function saveNewUsername() {
+  const newUsername = usernameInput.value.trim();
+
+  // التحقق من صحة الاسم
+  const validation = validateUsername(newUsername);
+  if (!validation.isValid) {
+    showNotification(validation.message, 'danger');
+    return;
+  }
+
+  // التحقق من عدم تغيير الاسم إلى نفس الاسم الحالي
+  if (currentUserInfo && validation.cleanUsername === currentUserInfo.name) {
+    showNotification('هذا هو اسمك الحالي بالفعل', 'info');
+    return;
+  }
+
+  // تعطيل الزر أثناء الحفظ
+  saveUsernameBtn.disabled = true;
+  saveUsernameBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
+  // إرسال طلب تحديث الاسم للخادم
+  socket.emit('update-username', { newUsername: validation.cleanUsername });
+}
+
+// دالة لتحميل اسم المستخدم المحفوظ عند بدء التطبيق
+function loadSavedUsername() {
+  const savedUsername = getUsernameFromStorage();
+  if (savedUsername) {
+    // إرسال طلب استخدام الاسم المحفوظ للخادم
+    socket.emit('request-saved-username', { savedUsername });
+    console.log(`محاولة استخدام الاسم المحفوظ: "${savedUsername}"`);
+  } else {
+    console.log('لا يوجد اسم مستخدم محفوظ');
+  }
+}
 
 // دالة لتنسيق مدة الاتصال
 function formatConnectionDuration(seconds) {
@@ -111,6 +171,10 @@ function updateConnectedUsersList(usersDetails = []) {
     const userClass = isCurrentUser ? 'user-item current-user' : 'user-item';
     const userBadge = isCurrentUser ? '<span class="badge bg-warning text-dark ms-2">أنت</span>' : '';
 
+    // إضافة تأثير بصري للمستخدمين الذين غيروا أسماءهم مؤخراً
+    const recentlyRenamedClass = user.recentlyRenamed ? 'bg-info bg-opacity-10 border-info' : '';
+    const recentlyRenamedBadge = user.recentlyRenamed ? '<span class="badge bg-info text-white ms-1">جديد</span>' : '';
+
     // تحديد أيقونة نوع الجهاز
     let deviceIcon = 'bi-laptop';
     if (user.deviceType === 'هاتف ذكي') {
@@ -129,13 +193,14 @@ function updateConnectedUsersList(usersDetails = []) {
     `;
 
     html += `
-      <div class="list-group-item ${userClass} d-flex align-items-center justify-content-between p-3">
+      <div class="list-group-item ${userClass} ${recentlyRenamedClass} d-flex align-items-center justify-content-between p-3">
         <div class="d-flex align-items-center flex-grow-1">
           <i class="bi ${userIcon} me-3 fs-5"></i>
           <div class="flex-grow-1">
             <div class="d-flex align-items-center">
               <span class="fw-semibold">${escapeHtml(user.name)}</span>
               ${userBadge}
+              ${recentlyRenamedBadge}
               <span class="user-status-indicator ms-2"></span>
             </div>
             <div class="user-duration">متصل منذ ${duration}</div>
@@ -1094,6 +1159,34 @@ browseBtn.addEventListener('click', (e) => {
   fileInput.click();
 });
 
+// مستمعي أحداث تعديل اسم المستخدم
+if (saveUsernameBtn) {
+  saveUsernameBtn.addEventListener('click', saveNewUsername);
+}
+
+if (usernameInput) {
+  // حفظ الاسم عند الضغط على Enter
+  usernameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      saveNewUsername();
+    }
+  });
+
+  // تحديث placeholder عند التركيز
+  usernameInput.addEventListener('focus', () => {
+    if (currentUserInfo) {
+      usernameInput.placeholder = 'أدخل اسم جديد';
+    }
+  });
+
+  // إعادة تعيين placeholder عند فقدان التركيز
+  usernameInput.addEventListener('blur', () => {
+    if (currentUserInfo && !usernameInput.value.trim()) {
+      usernameInput.placeholder = currentUserInfo.name;
+    }
+  });
+}
+
 // مستمعي أحداث Socket.IO
 socket.on('connect', () => {
   console.log('تم الاتصال بالخادم');
@@ -1104,6 +1197,39 @@ socket.on('connect', () => {
     connectionStatus.parentElement.classList.remove('text-danger');
     connectionStatus.parentElement.classList.add('text-light');
   }
+
+  // تحميل اسم المستخدم المحفوظ
+  loadSavedUsername();
+});
+
+socket.on('disconnect', () => {
+  console.log('انقطع الاتصال بالخادم');
+
+  // تحديث حالة الاتصال
+  if (connectionStatus) {
+    connectionStatus.textContent = 'منقطع';
+    connectionStatus.parentElement.classList.remove('text-light');
+    connectionStatus.parentElement.classList.add('text-danger');
+  }
+
+  // تعطيل زر حفظ اسم المستخدم
+  if (saveUsernameBtn) {
+    saveUsernameBtn.disabled = true;
+  }
+});
+
+socket.on('reconnect', () => {
+  console.log('تم إعادة الاتصال بالخادم');
+
+  // إعادة تحميل اسم المستخدم المحفوظ
+  loadSavedUsername();
+
+  // إعادة تفعيل زر حفظ اسم المستخدم
+  if (saveUsernameBtn) {
+    saveUsernameBtn.disabled = false;
+  }
+
+  showNotification('تم إعادة الاتصال بالخادم', 'success');
 });
 
 socket.on('all-files', (files) => {
@@ -1177,6 +1303,9 @@ socket.on('user-info', (userInfo) => {
   currentUserInfo = userInfo;
   console.log('معلومات المستخدم:', userInfo);
 
+  // تحديث عرض اسم المستخدم في الواجهة
+  updateUsernameDisplay();
+
   // تحديث الملفات الخاصة بعد الحصول على معلومات المستخدم
   updatePrivateFilesList();
 });
@@ -1240,6 +1369,97 @@ socket.on('user-joined', (data) => {
 socket.on('user-left', (data) => {
   const userName = data?.name || 'أحد المستخدمين';
   showNotification(`غادر ${userName}`, 'warning');
+});
+
+// معالجة نجاح تحديث اسم المستخدم
+socket.on('username-updated', (data) => {
+  const { oldUsername, newUsername } = data;
+
+  // حفظ الاسم الجديد في التخزين المحلي
+  saveUsernameToStorage(newUsername);
+
+  // إعادة تفعيل الزر مع تأثير نجاح
+  if (saveUsernameBtn) {
+    saveUsernameBtn.disabled = false;
+    saveUsernameBtn.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+
+    // إعادة الأيقونة العادية بعد ثانيتين
+    setTimeout(() => {
+      saveUsernameBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    }, 2000);
+  }
+
+  // تحديث عرض اسم المستخدم مع تأثير بصري
+  updateUsernameDisplay(true);
+
+  // إظهار رسالة نجاح
+  showNotification(`تم تحديث اسمك من "${oldUsername}" إلى "${newUsername}"`, 'success');
+
+  console.log(`تم تحديث اسم المستخدم من "${oldUsername}" إلى "${newUsername}"`);
+});
+
+// معالجة خطأ في تحديث اسم المستخدم
+socket.on('username-update-error', (data) => {
+  const { error } = data;
+
+  // إعادة تفعيل الزر مع تأثير خطأ
+  if (saveUsernameBtn) {
+    saveUsernameBtn.disabled = false;
+    saveUsernameBtn.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
+
+    // إعادة الأيقونة العادية بعد ثانيتين
+    setTimeout(() => {
+      saveUsernameBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    }, 2000);
+  }
+
+  // إضافة تأثير بصري لحقل الإدخال
+  if (usernameInput) {
+    usernameInput.classList.add('is-invalid');
+    setTimeout(() => {
+      usernameInput.classList.remove('is-invalid');
+    }, 2000);
+  }
+
+  // إظهار رسالة خطأ
+  showNotification(error, 'danger');
+
+  console.error('خطأ في تحديث اسم المستخدم:', error);
+});
+
+// معالجة إشعار تغيير اسم مستخدم آخر
+socket.on('user-name-changed', (data) => {
+  const { oldName, newName } = data;
+
+  // إظهار إشعار بتغيير الاسم
+  showNotification(`غيّر ${oldName} اسمه إلى ${newName}`, 'info');
+
+  // تحديث قائمة المستخدمين المتصلين لإبراز المستخدم الذي غير اسمه
+  if (connectedUsersDetails.length > 0) {
+    // البحث عن المستخدم في القائمة وإضافة علامة تغيير الاسم
+    const updatedUsersList = connectedUsersDetails.map(user => {
+      if (user.name === newName) {
+        return {
+          ...user,
+          recentlyRenamed: true // إضافة علامة لإظهار تأثير بصري
+        };
+      }
+      return user;
+    });
+
+    // تحديث القائمة
+    connectedUsersDetails = updatedUsersList;
+    updateConnectedUsersList(connectedUsersDetails);
+
+    // إزالة العلامة بعد 3 ثوان
+    setTimeout(() => {
+      connectedUsersDetails = connectedUsersDetails.map(user => ({
+        ...user,
+        recentlyRenamed: false
+      }));
+      updateConnectedUsersList(connectedUsersDetails);
+    }, 3000);
+  }
 });
 
 // استقبال ملف مرسل من مستخدم آخر

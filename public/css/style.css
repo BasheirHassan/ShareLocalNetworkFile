@@ -49,6 +49,43 @@ body {
   opacity: 0.7;
 }
 
+/* أنماط حقل تعديل اسم المستخدم */
+#username-input {
+  transition: all 0.3s ease;
+  width: 120px;
+}
+
+#username-input:focus {
+  width: 150px;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none;
+}
+
+#save-username-btn {
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+#save-username-btn:hover {
+  opacity: 1;
+  background-color: rgba(25, 135, 84, 0.2);
+}
+
+/* تأثير تحديث اسم المستخدم */
+.username-updated {
+  animation: username-highlight 1.5s ease;
+}
+
+@keyframes username-highlight {
+  0% {
+    background-color: rgba(25, 135, 84, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 /* أنماط خاصة بالملفات الخاصة */
 .private-file-row {
   background-color: rgba(25, 135, 84, 0.05);

@@ -276,6 +276,74 @@ function showNotification(message, type = 'success', options = {}) {
   bsToast.show();
 }
 
+/**
+ * التحقق من صحة اسم المستخدم
+ * @param {string} username - اسم المستخدم المراد التحقق منه
+ * @returns {Object} - نتيجة التحقق مع رسالة الخطأ إن وجدت
+ */
+function validateUsername(username) {
+  // التحقق من وجود الاسم
+  if (!username || typeof username !== 'string') {
+    return { isValid: false, message: 'يرجى إدخال اسم المستخدم' };
+  }
+
+  // إزالة المسافات الزائدة
+  const trimmedUsername = username.trim();
+
+  // التحقق من عدم كون الاسم فارغاً بعد إزالة المسافات
+  if (trimmedUsername.length === 0) {
+    return { isValid: false, message: 'اسم المستخدم لا يمكن أن يكون فارغاً' };
+  }
+
+  // التحقق من الطول الأدنى
+  if (trimmedUsername.length < 2) {
+    return { isValid: false, message: 'اسم المستخدم يجب أن يكون حرفين على الأقل' };
+  }
+
+  // التحقق من الطول الأقصى
+  if (trimmedUsername.length > 30) {
+    return { isValid: false, message: 'اسم المستخدم يجب أن يكون 30 حرف أو أقل' };
+  }
+
+  // التحقق من الأحرف المسموحة (أحرف عربية وإنجليزية وأرقام ومسافات وبعض الرموز)
+  const allowedPattern = /^[\u0600-\u06FFa-zA-Z0-9\s\-_\.]+$/;
+  if (!allowedPattern.test(trimmedUsername)) {
+    return { isValid: false, message: 'اسم المستخدم يحتوي على أحرف غير مسموحة' };
+  }
+
+  // التحقق من عدم احتواء الاسم على مسافات متتالية
+  if (/\s{2,}/.test(trimmedUsername)) {
+    return { isValid: false, message: 'لا يمكن أن يحتوي اسم المستخدم على مسافات متتالية' };
+  }
+
+  return { isValid: true, message: '', cleanUsername: trimmedUsername };
+}
+
+/**
+ * حفظ اسم المستخدم في التخزين المحلي
+ * @param {string} username - اسم المستخدم
+ */
+function saveUsernameToStorage(username) {
+  try {
+    localStorage.setItem('shareLocalFile_username', username);
+  } catch (error) {
+    console.warn('تعذر حفظ اسم المستخدم في التخزين المحلي:', error);
+  }
+}
+
+/**
+ * استرجاع اسم المستخدم من التخزين المحلي
+ * @returns {string|null} - اسم المستخدم المحفوظ أو null
+ */
+function getUsernameFromStorage() {
+  try {
+    return localStorage.getItem('shareLocalFile_username');
+  } catch (error) {
+    console.warn('تعذر استرجاع اسم المستخدم من التخزين المحلي:', error);
+    return null;
+  }
+}
+
 // تصدير الدوال للاستخدام في ملفات أخرى
 export {
   formatFileSize,
@@ -286,5 +354,8 @@ export {
   getFileIcon,
   getFileType,
   escapeHtml,
-  showNotification
+  showNotification,
+  validateUsername,
+  saveUsernameToStorage,
+  getUsernameFromStorage
 };

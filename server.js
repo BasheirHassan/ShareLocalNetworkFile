@@ -564,6 +564,49 @@ io.on('connection', (socket) => {
   connectedUsersList.set(socket.id, userInfo);
   connectedUsers++;
 
+  // معالجة طلب استخدام اسم محفوظ
+  socket.on('request-saved-username', (data) => {
+    const { savedUsername } = data;
+
+    if (!savedUsername || typeof savedUsername !== 'string') {
+      return;
+    }
+
+    const trimmedUsername = savedUsername.trim();
+
+    // التحقق من صحة الاسم المحفوظ
+    if (trimmedUsername.length >= 2 && trimmedUsername.length <= 30) {
+      const allowedPattern = /^[\u0600-\u06FFa-zA-Z0-9\s\-_\.]+$/;
+      if (allowedPattern.test(trimmedUsername)) {
+        // التحقق من عدم تكرار الاسم
+        const existingUser = Array.from(connectedUsersList.values()).find(
+          user => user.name === trimmedUsername && user.id !== socket.id
+        );
+
+        if (!existingUser) {
+          // تحديث اسم المستخدم
+          const oldUsername = userInfo.name;
+          userInfo.name = trimmedUsername;
+          connectedUsersList.set(socket.id, userInfo);
+
+          // إرسال معلومات المستخدم المحدثة
+          socket.emit('user-info', userInfo);
+
+          // إرسال تحديث قائمة المستخدمين لجميع المتصلين
+          const userNames = getConnectedUserNames();
+          const usersDetails = getConnectedUsersDetails();
+          io.emit('connected-users-update', {
+            count: connectedUsers,
+            userNames: userNames,
+            usersDetails: usersDetails
+          });
+
+          console.log(`تم استخدام الاسم المحفوظ: "${trimmedUsername}" بدلاً من "${oldUsername}"`);
+        }
+      }
+    }
+  });
+
   console.log(`مستخدم جديد متصل: ${userName} - العدد الحالي: ${connectedUsers}`);
 
   // إرسال قائمة الملفات العامة للمستخدم الجديد
@@ -595,6 +638,91 @@ io.on('connection', (socket) => {
   if (connectedUsers > 1) {
     socket.broadcast.emit('user-joined', { name: userName });
   }
+
+  // معالجة تحديث اسم المستخدم
+  socket.on('update-username', (data) => {
+    const { newUsername } = data;
+    const userInfo = connectedUsersList.get(socket.id);
+
+    if (!userInfo) {
+      socket.emit('username-update-error', {
+        error: 'معلومات المستخدم غير متوفرة'
+      });
+      return;
+    }
+
+    // التحقق من صحة اسم المستخدم
+    if (!newUsername || typeof newUsername !== 'string') {
+      socket.emit('username-update-error', {
+        error: 'اسم المستخدم غير صحيح'
+      });
+      return;
+    }
+
+    const trimmedUsername = newUsername.trim();
+
+    // التحقق من الطول
+    if (trimmedUsername.length < 2 || trimmedUsername.length > 30) {
+      socket.emit('username-update-error', {
+        error: 'اسم المستخدم يجب أن يكون بين 2 و 30 حرف'
+      });
+      return;
+    }
+
+    // التحقق من الأحرف المسموحة
+    const allowedPattern = /^[\u0600-\u06FFa-zA-Z0-9\s\-_\.]+$/;
+    if (!allowedPattern.test(trimmedUsername)) {
+      socket.emit('username-update-error', {
+        error: 'اسم المستخدم يحتوي على أحرف غير مسموحة'
+      });
+      return;
+    }
+
+    // التحقق من عدم تكرار الاسم
+    const existingUser = Array.from(connectedUsersList.values()).find(
+      user => user.name === trimmedUsername && user.id !== socket.id
+    );
+
+    if (existingUser) {
+      socket.emit('username-update-error', {
+        error: 'اسم المستخدم مستخدم بالفعل'
+      });
+      return;
+    }
+
+    // حفظ الاسم القديم للإشعارات
+    const oldUsername = userInfo.name;
+
+    // تحديث اسم المستخدم
+    userInfo.name = trimmedUsername;
+    connectedUsersList.set(socket.id, userInfo);
+
+    // إرسال تأكيد التحديث للمستخدم
+    socket.emit('username-updated', {
+      oldUsername,
+      newUsername: trimmedUsername
+    });
+
+    // إرسال معلومات المستخدم المحدثة
+    socket.emit('user-info', userInfo);
+
+    // إرسال تحديث قائمة المستخدمين لجميع المتصلين
+    const userNames = getConnectedUserNames();
+    const usersDetails = getConnectedUsersDetails();
+    io.emit('connected-users-update', {
+      count: connectedUsers,
+      userNames: userNames,
+      usersDetails: usersDetails
+    });
+
+    // إشعار المستخدمين الآخرين بتغيير الاسم
+    socket.broadcast.emit('user-name-changed', {
+      oldName: oldUsername,
+      newName: trimmedUsername
+    });
+
+    console.log(`تم تحديث اسم المستخدم من "${oldUsername}" إلى "${trimmedUsername}"`);
+  });
 
   // معالجة إرسال ملف من العميل
   socket.on('send-file-to-user', (data) => {
